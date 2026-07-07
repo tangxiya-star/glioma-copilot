@@ -112,10 +112,8 @@ export default function Home() {
         if (d.patients[0]) loadCase(d.patients[0].id, d.patients);
       })
       .catch(() => {});
-    fetch(`${API_URL}/api/trials?limit=20`)
-      .then((r) => r.json())
-      .then((d) => setTrials(d.trials))
-      .catch(() => {});
+    // Trials are NOT fetched up front — they are matched to the patient by
+    // Analyze (condition-scoped), so the flow reads "Analyze first".
   }, []);
 
   // No fetch — the report is already in memory. `list` covers the first call
@@ -123,6 +121,7 @@ export default function Home() {
   function loadCase(id: string, list: Patient[] = cases) {
     setCaseId(id);
     setResult(null);
+    setTrials(null); // clear the previous case's matched trials — Analyze re-matches
     setFit(null);
     setFitNct("");
     setReview(null);
@@ -432,25 +431,40 @@ export default function Home() {
                 · matched to “{matchedCondition}”
               </span>
             ) : (
-              <span className="text-neutral-400 font-normal text-sm">
-                · broad glioma (Analyze to match the patient)
-              </span>
+              <span className="text-neutral-400 font-normal text-sm">· step 2</span>
             )}
           </h2>
-          <p className="text-xs text-neutral-400">
-            {Object.keys(triage).length > 0 || triaging ? (
-              <>
-                Top {TRIAGE_N} candidates auto-triaged for fit
-                {triaging && <span className="text-violet-500"> · assessing…</span>} — click any
-                trial for the full per-criterion table.
-              </>
-            ) : (
-              "Click a trial to assess per-criterion fit."
-            )}
-          </p>
-          {!trials && <p className="text-sm text-neutral-500">Loading trials…</p>}
-          <ul className="space-y-2 max-h-[30rem] overflow-auto">
-            {sortByTriage(trials, triage).map((t) => {
+
+          {/* Flow is Analyze-first: trials are matched to the patient, not browsed. */}
+          {!result && !loading && (
+            <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-sm text-neutral-500">
+              <span className="font-medium text-neutral-600 dark:text-neutral-300">
+                ① Run <span className="text-violet-600">Analyze</span> first.
+              </span>{" "}
+              It classifies this patient (WHO CNS5) and matches recruiting trials to the tumor
+              type, then auto-triages the top {TRIAGE_N} for fit. Trials are matched for clinician
+              review — not a general trial search.
+            </div>
+          )}
+          {loading && (
+            <p className="text-sm text-violet-500 animate-pulse">Matching trials to this patient…</p>
+          )}
+
+          {result && (
+            <>
+              <p className="text-xs text-neutral-400">
+                {Object.keys(triage).length > 0 || triaging ? (
+                  <>
+                    Top {TRIAGE_N} candidates auto-triaged for fit
+                    {triaging && <span className="text-violet-500"> · assessing…</span>} — click any
+                    trial for the full per-criterion table.
+                  </>
+                ) : (
+                  "Click a trial to assess per-criterion fit."
+                )}
+              </p>
+              <ul className="space-y-2 max-h-[30rem] overflow-auto">
+                {sortByTriage(trials, triage).map((t) => {
               const tri = triage[t.nct_id];
               const sig = tri ? SIGNAL[tri.signal] ?? SIGNAL.no_criteria : null;
               return (
@@ -488,7 +502,9 @@ export default function Home() {
                 </li>
               );
             })}
-          </ul>
+              </ul>
+            </>
+          )}
         </section>
       </div>
 
