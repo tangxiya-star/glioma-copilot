@@ -106,6 +106,24 @@ def store_eligibility_results(patient_id: str, nct_id: str, items: list[dict[str
     return len(items)
 
 
+def get_eligibility_results(patient_id: str, nct_id: str) -> list[dict[str, Any]]:
+    """Read back stored per-criterion fit verdicts for a patient x trial."""
+    with psycopg.connect(DATABASE_URL) as conn:
+        rows = conn.execute(
+            """
+            SELECT criterion, kind, verdict, citation
+            FROM eligibility_results
+            WHERE patient_id = %s AND nct_id = %s
+            ORDER BY id
+            """,
+            (patient_id, nct_id),
+        ).fetchall()
+    return [
+        {"criterion": r[0], "kind": r[1], "verdict": r[2], "citation": r[3]}
+        for r in rows
+    ]
+
+
 def db_counts() -> dict[str, int]:
     """Row counts — proves the stored data is queryable."""
     with psycopg.connect(DATABASE_URL) as conn:

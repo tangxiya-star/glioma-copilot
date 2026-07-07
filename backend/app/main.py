@@ -22,6 +22,7 @@ from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for, tu
 from .db import (
     db_counts,
     db_ping,
+    get_eligibility_results,
     init_schema,
     store_eligibility_results,
     upsert_patient,
@@ -409,5 +410,134 @@ def fit_stream(req: FitRequest):
             print(f"[fit_stream] store skipped: {e}")
 
         yield json.dumps({"type": "summary", "summary": summary}) + "\n"
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
+# --- Day 4: three-agent verification loop (draft -> verify -> investigate) ---
+
+_DRAFT_SYSTEM = (
+    "You are the DRAFTING agent summarizing a trial for a busy tumor board. Given a "
+    "patient and a trial's per-criterion fit assessment, write a concise evidence "
+    "brief. LEAD with a clear, decisive one-line eligibility verdict (e.g. 'The "
+    "patient is eligible for this trial' / 'appears eligible' / 'is not eligible'), "
+    "the way a clinician would open a summary — then 3-6 supporting claims, each "
+    "citing the criterion it rests on.\n\n"
+    "Return STRICT JSON only:\n"
+    '{"assessment": "<decisive one-line verdict>", "claims": [{"claim": "", "citation": ""}]}'
+)
+
+_VERIFY_SYSTEM = (
+    "You are the VERIFICATION agent. Claude is NOT the source of truth — the "
+    "per-criterion FIT ASSESSMENT is. Check EVERY claim in the draft brief against "
+    "it. For each claim assign a status:\n"
+    "  - \"supported\": fully backed by 'met' criteria.\n"
+    "  - \"overstated\": asserts more certainty than the evidence — e.g. claims or "
+    "implies eligibility while relevant criteria are 'unknown'.\n"
+    "  - \"unsupported\": contradicted by a 'not_met' criterion.\n"
+    "For overstated/unsupported claims, REWRITE them to match the evidence (e.g. "
+    "'eligible for the trial' -> 'possibly relevant; requires EGFR testing to "
+    "confirm'). Give a short reason citing the criterion.\n\n"
+    "Return STRICT JSON only:\n"
+    '{"log": [{"claim": "", "status": "supported|overstated|unsupported", '
+    '"rewrite": "<corrected claim, or same text if supported>", "reason": ""}]}'
+)
+
+_INVESTIGATE_SYSTEM = (
+    "You are the INVESTIGATION agent. Given the unknown/flagged items, list the "
+    "concrete next steps to resolve each (test to order, info to obtain, who to "
+    "contact). Be specific and clinical.\n\n"
+    "Return STRICT JSON only:\n"
+    '{"steps": [{"item": "", "action": ""}]}'
+)
+
+
+def _agent_json(agent: str, system: str, user: str):
+    """One structured agent call -> parsed JSON (or None)."""
+    msg = client.messages.create(
+        model=model_for(agent), max_tokens=4000, system=system,
+        messages=[{"role": "user", "content": user}], **tuning_for(agent),
+    )
+    return parse_json(text_from(msg))
+
+
+def _compute_fit_items(patient: dict, trial: dict) -> list[dict]:
+    """Run the fit assessment once (non-streaming) and return its items."""
+    user = (
+        f"PATIENT REPORT:\n{patient['report']}\n\n"
+        f"TRIAL {trial['nct_id']} — {trial['title']}\n"
+        f"ELIGIBILITY CRITERIA:\n{trial['eligibility']}"
+    )
+    msg = client.messages.create(
+        model=model_for("fit"), max_tokens=8000, system=_FIT_SYSTEM,
+        messages=[{"role": "user", "content": user}], **tuning_for("fit"),
+    )
+    parsed = parse_json(text_from(msg)) or {}
+    return parsed.get("items", [])
+
+
+def _fit_digest(items: list[dict]) -> str:
+    lines = [
+        f"- [{it.get('verdict')}] ({it.get('kind')}) {it.get('criterion')}"
+        f"  | cite: {it.get('citation')}"
+        for it in items
+    ]
+    return "\n".join(lines)
+
+
+@app.post("/api/review/stream")
+def review_stream(req: FitRequest):
+    """Three-agent loop: draft -> verify (catch overclaims) -> investigate, streamed."""
+    patient = get_patient(req.patient_id)
+    trial = fetch_trial(req.nct_id)
+    if trial is None:
+        raise HTTPException(status_code=404, detail=f"Trial {req.nct_id} not found")
+
+    def gen():
+        # Reuse stored fit verdicts if present; otherwise compute them now.
+        try:
+            items = get_eligibility_results(patient["id"], trial["nct_id"])
+        except Exception:
+            items = []
+        if not items:
+            yield json.dumps({"type": "stage", "stage": "fit"}) + "\n"
+            items = _compute_fit_items(patient, trial)
+        digest = _fit_digest(items)
+        trial_meta = {"nct_id": trial["nct_id"], "title": trial["title"]}
+        yield json.dumps({"type": "trial", "trial": trial_meta}) + "\n"
+
+        # 1) Drafting agent
+        yield json.dumps({"type": "stage", "stage": "draft"}) + "\n"
+        draft = _agent_json(
+            "draft", _DRAFT_SYSTEM,
+            f"PATIENT: {patient['label']}\n\nFIT ASSESSMENT:\n{digest}",
+        ) or {"assessment": "", "claims": []}
+        yield json.dumps({"type": "draft", "draft": draft}) + "\n"
+
+        # 2) Verification agent — the money moment. Fold the headline verdict in as
+        # the first claim so it gets scrutinized hardest.
+        yield json.dumps({"type": "stage", "stage": "verify"}) + "\n"
+        claims_to_check = [
+            {"claim": draft.get("assessment", ""), "citation": "overall verdict"}
+        ] + draft.get("claims", [])
+        verify = _agent_json(
+            "verify", _VERIFY_SYSTEM,
+            "CLAIMS TO VERIFY (the FIRST is the overall eligibility verdict — "
+            f"scrutinize it hardest):\n{json.dumps(claims_to_check)}\n\n"
+            f"FIT ASSESSMENT (source of truth):\n{digest}",
+        ) or {"log": []}
+        yield json.dumps({"type": "verify", "verify": verify}) + "\n"
+
+        # 3) Investigation agent
+        yield json.dumps({"type": "stage", "stage": "investigate"}) + "\n"
+        unknowns = _fit_digest([it for it in items if it.get("verdict") == "unknown"])
+        flagged = [e for e in verify.get("log", []) if e.get("status") != "supported"]
+        investigate = _agent_json(
+            "investigate", _INVESTIGATE_SYSTEM,
+            f"UNKNOWN CRITERIA:\n{unknowns}\n\nFLAGGED CLAIMS:\n{json.dumps(flagged)}",
+        ) or {"steps": []}
+        yield json.dumps({"type": "investigate", "investigate": investigate}) + "\n"
+
+        yield json.dumps({"type": "done"}) + "\n"
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")

@@ -118,7 +118,45 @@ CLINICAL / LOGISTICS:
 """,
 }
 
-SYNTHETIC_PATIENTS = [CASE_001, CASE_002, CASE_003]
+CASE_004 = {
+    "id": "case-004",
+    "label": "Case 004 — 62yo, recurrent GBM (IDH-wildtype) — prior bevacizumab",
+    "report": """NEURO-ONCOLOGY CASE SUMMARY & MOLECULAR REPORT (synthetic — no PHI)
+
+Patient: 62-year-old male. Glioblastoma, IDH-wildtype. At recurrence.
+
+DISEASE COURSE:
+- Initial: left parietal glioblastoma, subtotal resection.
+- First-line: chemoradiation with concurrent + adjuvant TEMOZOLOMIDE (Stupp).
+- At progression: started BEVACIZUMAB; has received several cycles to date.
+- Now: further progression on bevacizumab; seeking a clinical trial.
+
+HISTOLOGY (initial resection):
+Diffuse astrocytic glioma with MICROVASCULAR PROLIFERATION and NECROSIS.
+Ki-67 proliferation index ~30%.
+
+MOLECULAR / IHC:
+- IDH1 R132H: NEGATIVE (IHC). IDH1/2 sequencing: wild-type.
+- MGMT promoter: METHYLATED.
+- 1p/19q: intact (no co-deletion).
+- EGFR: tested — not amplified; no EGFRvIII.
+- ATRX: retained.
+- H3 K27M: not detected.
+
+INTEGRATED DIAGNOSIS:
+Glioblastoma, IDH-wildtype, CNS WHO grade 4 — recurrent.
+
+PRIOR TREATMENT:
+Surgery -> radiotherapy -> temozolomide (first-line), then BEVACIZUMAB for
+recurrence (ongoing until recent progression).
+
+CLINICAL / LOGISTICS:
+- Performance status: ECOG 1 (KPS ~80).
+- Location: California. Open to clinical trial participation.
+""",
+}
+
+SYNTHETIC_PATIENTS = [CASE_001, CASE_002, CASE_003, CASE_004]
 
 # Default patient (used where a single case is needed, e.g. extract/classify defaults).
 SYNTHETIC_PATIENT = CASE_001
