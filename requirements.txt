@@ -1,0 +1,5 @@
+anthropic
+psycopg[binary]
+requests
+streamlit
+python-dotenv
