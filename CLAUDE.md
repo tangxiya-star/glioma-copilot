@@ -62,6 +62,7 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 | **`docs/PRD-v2-full.md`** | **Canonical PRD** — full current direction. Start here. |
 | `docs/PRD-v1-lean.md` | Earlier leaner PRD (compact architecture). Reference. |
 | `docs/PRD-中文版.md` | Chinese PRD **— still OLD GBM framing; needs syncing to v2** (for the biomedical family reviewer). |
+| **`docs/six-day-build.md`** | **The execution plan for July 7–13** — day-by-day, stack locked, cut-line. Follow this to build. |
 | `docs/one-day-demo.md` | Bare-minimum cut — closest to the actual MVP shape. |
 | `docs/five-day-build.md` | Fuller build plan (AACT/RxNorm/openFDA) — reference; MVP uses live API + Postgres instead. |
 | `docs/demo_script.md` | Pitch script + pre-loaded Q&A. |
