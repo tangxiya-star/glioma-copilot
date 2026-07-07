@@ -103,12 +103,45 @@ export default function Home() {
     setFitLoading(true);
     setFit(null);
     try {
-      const r = await fetch(`${API_URL}/api/fit`, {
+      const r = await fetch(`${API_URL}/api/fit/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nct_id, patient_id: caseId }),
       });
-      setFit(await r.json());
+      if (!r.body) return;
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      // Read NDJSON: one JSON message per line, rendered as it arrives.
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let msg;
+          try {
+            msg = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          if (msg.type === "start") {
+            setFit({ trial: msg.trial, items: [], summary: { met: 0, not_met: 0, unknown: 0 } });
+          } else if (msg.type === "item") {
+            setFit((prev) => {
+              if (!prev) return prev;
+              const summary = { ...prev.summary };
+              if (msg.item.verdict in summary) summary[msg.item.verdict as keyof typeof summary]++;
+              return { ...prev, items: [...prev.items, msg.item], summary };
+            });
+          } else if (msg.type === "summary") {
+            setFit((prev) => (prev ? { ...prev, summary: msg.summary } : prev));
+          }
+        }
+      }
     } finally {
       setFitLoading(false);
     }
@@ -231,9 +264,16 @@ export default function Home() {
       {/* Fit assessment table */}
       {(fitLoading || fit) && (
         <section className="space-y-3">
-          <h2 className="font-semibold">Trial Fit Assessment</h2>
-          {fitLoading && (
-            <p className="text-sm text-neutral-500">Assessing eligibility criteria…</p>
+          <h2 className="font-semibold">
+            Trial Fit Assessment
+            {fitLoading && (
+              <span className="ml-2 text-sm font-normal text-violet-500 animate-pulse">
+                ● streaming…
+              </span>
+            )}
+          </h2>
+          {fitLoading && !fit && (
+            <p className="text-sm text-neutral-500">Contacting trial + model…</p>
           )}
           {fit && (
             <div className="space-y-3">

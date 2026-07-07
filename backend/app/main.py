@@ -14,6 +14,7 @@ import re
 from anthropic import Anthropic
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from .classify import classify_who_cns5
@@ -304,3 +305,107 @@ def fit(req: FitRequest):
         "items": items,
         "summary": summary,
     }
+
+
+_FIT_STREAM_SYSTEM = _FIT_SYSTEM.rsplit("Return STRICT JSON only:", 1)[0] + (
+    "Output each criterion as a STANDALONE JSON object, ONE PER LINE (JSONL) — no "
+    "wrapping array or object, no code fences, no prose, no line breaks inside an "
+    "object. Each line exactly:\n"
+    '{"criterion": "", "kind": "inclusion|exclusion", "verdict": "met|not_met|unknown", '
+    '"citation": "<exact eligibility line>", "rationale": "<short, what in the report decided it>"}'
+)
+
+
+def _extract_objects(buf: str) -> tuple[list[str], str]:
+    """Pull complete top-level {...} JSON objects from a streaming buffer.
+
+    Returns (complete object strings, remaining buffer). Robust to newlines,
+    commas, and array brackets between objects.
+    """
+    objs: list[str] = []
+    depth = 0
+    start = -1
+    in_str = False
+    esc = False
+    for i, ch in enumerate(buf):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start >= 0:
+                    objs.append(buf[start : i + 1])
+                    start = -1
+    remaining = buf[start:] if depth > 0 and start >= 0 else ""
+    return objs, remaining
+
+
+@app.post("/api/fit/stream")
+def fit_stream(req: FitRequest):
+    """Streaming per-criterion fit — emits one NDJSON line per criterion as it lands."""
+    patient = get_patient(req.patient_id)
+    trial = fetch_trial(req.nct_id)
+    if trial is None:
+        raise HTTPException(status_code=404, detail=f"Trial {req.nct_id} not found")
+    if not trial.get("eligibility"):
+        raise HTTPException(status_code=422, detail="Trial has no eligibility text")
+
+    model = model_for("fit")
+    user = (
+        f"PATIENT REPORT:\n{patient['report']}\n\n"
+        f"TRIAL {trial['nct_id']} — {trial['title']}\n"
+        f"ELIGIBILITY CRITERIA:\n{trial['eligibility']}"
+    )
+
+    def gen():
+        trial_meta = {"nct_id": trial["nct_id"], "title": trial["title"],
+                      "url": trial["url"], "locations": trial["locations"]}
+        yield json.dumps({"type": "start", "model": model, "trial": trial_meta}) + "\n"
+
+        items: list[dict] = []
+        summary = {"met": 0, "not_met": 0, "unknown": 0}
+        buffer = ""
+        try:
+            with client.messages.stream(
+                model=model, max_tokens=8000, system=_FIT_STREAM_SYSTEM,
+                messages=[{"role": "user", "content": user}],
+            ) as stream:
+                for text in stream.text_stream:
+                    buffer += text
+                    complete, buffer = _extract_objects(buffer)
+                    for obj_str in complete:
+                        try:
+                            item = json.loads(obj_str)
+                        except json.JSONDecodeError:
+                            continue
+                        if not isinstance(item, dict) or "verdict" not in item:
+                            continue
+                        items.append(item)
+                        if item["verdict"] in summary:
+                            summary[item["verdict"]] += 1
+                        yield json.dumps({"type": "item", "item": item}) + "\n"
+        except Exception as e:
+            yield json.dumps({"type": "error", "detail": str(e)}) + "\n"
+
+        try:
+            upsert_patient(patient)
+            upsert_trials([trial])
+            store_eligibility_results(patient["id"], trial["nct_id"], items)
+        except Exception as e:
+            print(f"[fit_stream] store skipped: {e}")
+
+        yield json.dumps({"type": "summary", "summary": summary}) + "\n"
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
