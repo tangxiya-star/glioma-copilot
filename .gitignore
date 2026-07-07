@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# env / secrets
+.env
+.env.*
+*.key
+
+# os
+.DS_Store
+
+# build
+dist/
+build/
+.next/
