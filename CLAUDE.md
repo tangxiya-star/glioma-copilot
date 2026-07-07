@@ -68,12 +68,34 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 
 ---
 
-## Current status & next steps
+## Current status & next steps  (updated mid-build — Day 0→4 done)
 
-- **Done**: direction locked; PRD-v2 written; planning docs in `docs/`. Repo scaffolded.
-- **Next**:
-  1. (Optional) Regenerate a Chinese PRD synced to v2 for the family reviewer, if needed.
-  2. Produce/execute the **6-day build**: live ClinicalTrials.gov + report parse → WHO classification → Trial Fit Assessment → 3-agent verification → two views (clinician primary, shared-decision) → deploy → record 3-min video.
+**Stack (built):** Next.js (frontend/ → Vercel) + FastAPI (backend/ → Render) + Neon
+Postgres + Claude API. Per-agent model config (`backend/app/config.py` AGENT_MODELS:
+verify→Opus 4.8, rest→Sonnet 5) and per-agent effort (AGENT_EFFORT; fit→low for fast
+streaming, verify→high). Deployed:
+- Frontend: https://glioma-copilot.vercel.app/
+- Backend:  https://glioma-copilot-api.onrender.com  (free tier sleeps ~15min → first hit ~30-50s; warm it before demos)
+- Secrets live in local `.env` (gitignored) and each host's dashboard env vars.
+
+**Done (Day 0→4):**
+- Day 0: scaffold + Neon + Claude verified; deployed both ends.
+- Day 1: live ClinicalTrials.gov v2 fetch (`backend/app/trials.py`); synthetic patients (`patient.py`); marker extraction (`POST /api/extract`).
+- Day 2: **deterministic** WHO CNS5 classifier (`classify.py`) — Claude normalizes report → profile, hardcoded rules decide diagnosis (grounds "Claude is not the source of truth"); Postgres schema (`schema.sql`: patients/trials/eligibility_results) + storage.
+- Day 3: per-criterion Trial Fit Assessment (`POST /api/fit` + `/api/fit/stream`, NDJSON streamed one criterion at a time); met/not_met/unknown + citations + negation; patient-matched trial retrieval (condition derived from diagnosis).
+- Day 4: three-agent loop (`POST /api/review/stream`): draft → verify (Opus, grounds/rewrites overclaims) → investigate. Clinician-view log in UI.
+- 4 synthetic demo cases (`patient.py`): 001 GBM IDH-wt (EGFR **unknown** → verify-catch scenario), 002 astrocytoma IDH-mut g4, 003 oligodendroglioma, 004 recurrent GBM with **prior bevacizumab** (genuine buried exclusion vs NCT05432804 → reliable "looks eligible → correctly flagged" Depth demo).
+
+**Key honest findings (do not regress):**
+- **not_met** conflicts (e.g. bevacizumab) → the system reliably & correctly rejects; draft concludes "not eligible" itself, so verify has nothing to override. This is the reliable Depth demo (Case 004).
+- **unknown** gates (e.g. EGFR untested) → the only honest scenario where "verify catches an overstated 'eligible'". A strong drafter (Sonnet 5) often hedges correctly, so the catch is NOT guaranteed. The honest lever to make it reliable is a genuinely weaker drafter (Haiku) — NOT withholding the fit results from the draft (that's mock/rigging, explicitly rejected by the user). Draft currently sees the full fit assessment.
+
+**Next (Day 5→6):**
+1. **Day 5** — shared-decision workspace: plain-language agent (patient-friendly rendering), patient-preference capture (travel / QoL / caregiver / phase / financial), shared-decision summary where preferences visibly change the ranking (heuristic sort, NOT autonomous recommendation — see red lines). Wire full flow: report → classify → fit → review → explain → preferences → summary.
+2. **Day 6** — polish, lock the demo case, record 3-min video (`docs/demo_script.md`), 100–200 word summary, make repo public, submit before Jul 13 9pm ET.
+3. Optional: a "drafting model" toggle (Sonnet 5 ↔ Haiku) to make the Case 001 verify-catch reliable for the demo (honest capability-tiering).
+
+**How to run locally:** backend `cd backend && ../.venv/bin/uvicorn app.main:app --reload --port 8000`; frontend `cd frontend && npm run dev` (needs `frontend/.env.local` NEXT_PUBLIC_API_URL=http://127.0.0.1:8000).
 
 ---
 
