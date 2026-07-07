@@ -414,6 +414,93 @@ def fit_stream(req: FitRequest):
     return StreamingResponse(gen(), media_type="application/x-ndjson")
 
 
+# --- Day-5 prep: proactive fit triage across the top candidate trials ---
+
+def _summarize_items(items: list[dict]) -> dict:
+    summary = {"met": 0, "not_met": 0, "unknown": 0}
+    for it in items:
+        if it.get("verdict") in summary:
+            summary[it["verdict"]] += 1
+    return summary
+
+
+def _triage_signal(summary: dict) -> str:
+    """A conservative triage label for clinician review — NOT a recommendation.
+
+    A hard conflict (any not_met) outranks missing data (unknown); only a trial
+    with neither reads as 'looks eligible, pending clinician confirmation'.
+    """
+    if summary.get("not_met", 0) > 0:
+        return "conflict"
+    if summary.get("unknown", 0) > 0:
+        return "needs_workup"
+    return "looks_eligible"
+
+
+class TriageRequest(BaseModel):
+    patient_id: str | None = None
+    condition: str = "glioma"
+    limit: int = 4  # candidates to triage; capped below to bound cost/latency
+
+
+@app.post("/api/triage/stream")
+def triage_stream(req: TriageRequest):
+    """Run the REAL per-criterion fit across the top N candidate trials, streamed.
+
+    This is fit triage FOR CLINICIAN REVIEW, not discovery/recommendation — the
+    candidate set still comes from condition scoping (the patient's tumor type).
+    Emits one message per trial as its fit lands, with a badge summary + the full
+    items (cached client-side so drill-down + 3-agent review reuse them).
+    """
+    patient = get_patient(req.patient_id)
+    n = max(1, min(req.limit, 5))  # cap 1..5 to bound Claude calls (~15s each)
+    try:
+        candidates = fetch_glioma_trials(page_size=n, condition=req.condition or "glioma")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ClinicalTrials.gov error: {e}")
+
+    def gen():
+        metas = [
+            {"nct_id": t["nct_id"], "title": t["title"],
+             "url": t["url"], "locations": t["locations"]}
+            for t in candidates
+        ]
+        yield json.dumps({"type": "start", "condition": req.condition,
+                          "count": len(candidates), "trials": metas}) + "\n"
+
+        try:
+            upsert_patient(patient)
+        except Exception as e:
+            print(f"[triage] patient store skipped: {e}")
+
+        for t in candidates:
+            meta = {"nct_id": t["nct_id"], "title": t["title"],
+                    "url": t["url"], "locations": t["locations"]}
+            if not t.get("eligibility"):
+                yield json.dumps({"type": "triage", "trial": meta, "items": [],
+                                  "summary": {"met": 0, "not_met": 0, "unknown": 0},
+                                  "signal": "no_criteria"}) + "\n"
+                continue
+            try:
+                items = _compute_fit_items(patient, t)
+            except Exception as e:
+                yield json.dumps({"type": "triage", "trial": meta, "error": str(e)}) + "\n"
+                continue
+            summary = _summarize_items(items)
+            try:
+                upsert_trials([t])
+                store_eligibility_results(patient["id"], t["nct_id"], items)
+            except Exception as e:
+                print(f"[triage] fit store skipped: {e}")
+            yield json.dumps({"type": "triage", "trial": meta, "items": items,
+                              "summary": summary,
+                              "signal": _triage_signal(summary)}) + "\n"
+
+        yield json.dumps({"type": "done"}) + "\n"
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
 # --- Day 4: three-agent verification loop (draft -> verify -> investigate) ---
 
 _DRAFT_SYSTEM = (

@@ -40,6 +40,20 @@ const VERDICT = {
   unknown: { icon: "❓", label: "unknown", cls: "text-amber-600" },
 };
 
+type Summary = { met: number; not_met: number; unknown: number };
+type TriageSignal = "looks_eligible" | "needs_workup" | "conflict" | "no_criteria";
+type Triage = { items: FitItem[]; summary: Summary; signal: TriageSignal };
+
+// Triage label for clinician review — NOT a recommendation. Ordering below is
+// conservative: hard conflicts sink, fewer unknowns rise; candidate set still
+// comes from condition scoping (this is fit triage, not discovery).
+const SIGNAL = {
+  looks_eligible: { icon: "✅", label: "looks eligible", cls: "text-emerald-600", rank: 0 },
+  needs_workup: { icon: "❓", label: "needs workup", cls: "text-amber-600", rank: 1 },
+  conflict: { icon: "❌", label: "conflict", cls: "text-red-600", rank: 2 },
+  no_criteria: { icon: "•", label: "no criteria", cls: "text-neutral-400", rank: 3 },
+};
+
 type Draft = { assessment: string; claims: { claim: string; citation: string }[] };
 type VerifyEntry = {
   claim: string;
@@ -74,6 +88,11 @@ export default function Home() {
   const [fitLoading, setFitLoading] = useState(false);
   const [matchedCondition, setMatchedCondition] = useState("");
 
+  // Proactive fit triage: nct_id -> badge summary + cached full items.
+  const [triage, setTriage] = useState<Record<string, Triage>>({});
+  const [triaging, setTriaging] = useState(false);
+  const TRIAGE_N = 4;
+
   const [review, setReview] = useState<Review | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
 
@@ -93,6 +112,9 @@ export default function Home() {
     setCaseId(id);
     setResult(null);
     setFit(null);
+    setFitNct("");
+    setReview(null);
+    setTriage({});
     setMatchedCondition("");
     fetch(`${API_URL}/api/patient?id=${id}`)
       .then((r) => r.json())
@@ -115,10 +137,78 @@ export default function Home() {
       setMatchedCondition(cond);
       setFit(null);
       setFitNct("");
+      setTriage({});
       const tr = await fetch(`${API_URL}/api/trials?limit=20&condition=${encodeURIComponent(cond)}`);
       setTrials((await tr.json()).trials);
+      // Proactively triage the top candidates so the clinician sees fit at a
+      // glance instead of clicking each trial. Fires right after Analyze.
+      runTriage(cond);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Run the real per-criterion fit across the top N candidates, streaming a
+  // badge per trial as it lands. Caches full items for instant drill-down.
+  async function runTriage(cond: string) {
+    setTriaging(true);
+    setTriage({});
+    try {
+      const r = await fetch(`${API_URL}/api/triage/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: caseId, condition: cond, limit: TRIAGE_N }),
+      });
+      if (!r.body) return;
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let msg;
+          try {
+            msg = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          if (msg.type === "triage" && msg.trial && msg.items) {
+            setTriage((prev) => ({
+              ...prev,
+              [msg.trial.nct_id]: {
+                items: msg.items,
+                summary: msg.summary,
+                signal: msg.signal,
+              },
+            }));
+          }
+        }
+      }
+    } finally {
+      setTriaging(false);
+    }
+  }
+
+  // Open a trial's full fit table. If it was already triaged, reuse the cached
+  // items (instant) instead of re-streaming; otherwise run live fit.
+  function openTrial(t: Trial) {
+    const cached = triage[t.nct_id];
+    if (cached && cached.items.length > 0) {
+      setReview(null);
+      setFitNct(t.nct_id);
+      setFit({
+        trial: { nct_id: t.nct_id, title: t.title, url: t.url, locations: t.locations },
+        items: cached.items,
+        summary: cached.summary,
+      });
+    } else {
+      runFit(t.nct_id);
     }
   }
 
@@ -303,27 +393,57 @@ export default function Home() {
               </span>
             )}
           </h2>
-          <p className="text-xs text-neutral-400">Click a trial to assess per-criterion fit.</p>
+          <p className="text-xs text-neutral-400">
+            {Object.keys(triage).length > 0 || triaging ? (
+              <>
+                Top {TRIAGE_N} candidates auto-triaged for fit
+                {triaging && <span className="text-violet-500"> · assessing…</span>} — click any
+                trial for the full per-criterion table.
+              </>
+            ) : (
+              "Click a trial to assess per-criterion fit."
+            )}
+          </p>
           {!trials && <p className="text-sm text-neutral-500">Loading trials…</p>}
           <ul className="space-y-2 max-h-[30rem] overflow-auto">
-            {trials?.map((t) => (
-              <li key={t.nct_id}>
-                <button
-                  onClick={() => runFit(t.nct_id)}
-                  className={`w-full text-left border rounded-md px-3 py-2 hover:border-violet-400 ${
-                    fitNct === t.nct_id
-                      ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
-                      : "border-neutral-200 dark:border-neutral-800"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{t.title}</span>
-                  <span className="block text-xs text-neutral-400 mt-1">
-                    {t.nct_id}
-                    {t.locations.length > 0 && <> · {t.locations.slice(0, 2).join(" · ")}</>}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {sortByTriage(trials, triage).map((t) => {
+              const tri = triage[t.nct_id];
+              const sig = tri ? SIGNAL[tri.signal] ?? SIGNAL.no_criteria : null;
+              return (
+                <li key={t.nct_id}>
+                  <button
+                    onClick={() => openTrial(t)}
+                    className={`w-full text-left border rounded-md px-3 py-2 hover:border-violet-400 ${
+                      fitNct === t.nct_id
+                        ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
+                        : "border-neutral-200 dark:border-neutral-800"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-medium">{t.title}</span>
+                      {sig && (
+                        <span
+                          className={`shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap ${sig.cls}`}
+                        >
+                          {sig.icon} {sig.label}
+                        </span>
+                      )}
+                    </div>
+                    {tri && tri.signal !== "no_criteria" && (
+                      <span className="block text-xs mt-1 space-x-2">
+                        <span className="text-emerald-600">✅ {tri.summary.met}</span>
+                        <span className="text-amber-600">❓ {tri.summary.unknown}</span>
+                        <span className="text-red-600">❌ {tri.summary.not_met}</span>
+                      </span>
+                    )}
+                    <span className="block text-xs text-neutral-400 mt-1">
+                      {t.nct_id}
+                      {t.locations.length > 0 && <> · {t.locations.slice(0, 2).join(" · ")}</>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </div>
@@ -491,6 +611,25 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+// Triaged trials first (looks-eligible → needs-workup → conflict), fewer
+// unknowns rising within a tier; un-triaged trials keep their original order
+// below. Stable: preserves incoming order for equal ranks.
+function sortByTriage(
+  trials: Trial[] | null,
+  triage: Record<string, Triage>
+): Trial[] {
+  if (!trials) return [];
+  const rankOf = (t: Trial) => {
+    const tri = triage[t.nct_id];
+    if (!tri) return { r: 9, u: 0 }; // un-triaged: keep after triaged
+    return { r: SIGNAL[tri.signal]?.rank ?? 3, u: tri.summary.unknown };
+  };
+  return trials
+    .map((t, i) => ({ t, i, ...rankOf(t) }))
+    .sort((a, b) => a.r - b.r || a.u - b.u || a.i - b.i)
+    .map((x) => x.t);
 }
 
 function Chip({ children, cls }: { children: React.ReactNode; cls: string }) {
