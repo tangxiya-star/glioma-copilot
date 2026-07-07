@@ -37,6 +37,31 @@ def model_for(agent: str) -> str:
     """Return the configured model for a named agent, falling back to the default."""
     return AGENT_MODELS.get(agent, CLAUDE_MODEL)
 
+
+# Reasoning depth per agent, via output_config.effort (Sonnet 5 / Opus 4.8 use
+# adaptive thinking + effort; the old budget_tokens is rejected with a 400).
+# Lower effort = the model thinks less and starts emitting visible output sooner
+# (snappier streaming). fit is mechanical per-criterion matching -> "low" for a
+# fast first token; verify is the deep-reasoning money-moment -> "high".
+AGENT_EFFORT = {
+    "extract": os.getenv("EXTRACT_EFFORT", "low"),
+    "classify": os.getenv("CLASSIFY_EFFORT", "low"),
+    "fit": os.getenv("FIT_EFFORT", "low"),
+    "verify": os.getenv("VERIFY_EFFORT", "high"),
+    "investigate": os.getenv("INVESTIGATE_EFFORT", "medium"),
+    "explain": os.getenv("EXPLAIN_EFFORT", "low"),
+    "summary": os.getenv("SUMMARY_EFFORT", "medium"),
+}
+
+
+def tuning_for(agent: str) -> dict:
+    """Return extra Anthropic kwargs (adaptive thinking + effort) for an agent call."""
+    effort = AGENT_EFFORT.get(agent, "high")
+    return {
+        "thinking": {"type": "adaptive"},
+        "output_config": {"effort": effort},
+    }
+
 # Comma-separated allowed origins for CORS (Next.js dev + deployed frontend).
 CORS_ORIGINS = os.getenv(
     "CORS_ORIGINS", "http://localhost:3000"

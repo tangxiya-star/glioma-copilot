@@ -18,7 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from .classify import classify_who_cns5
-from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for
+from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for, tuning_for
 from .db import (
     db_counts,
     db_ping,
@@ -377,11 +377,13 @@ def fit_stream(req: FitRequest):
         items: list[dict] = []
         summary = {"met": 0, "not_met": 0, "unknown": 0}
         buffer = ""
+        stream_kwargs = dict(
+            model=model, max_tokens=8000, system=_FIT_STREAM_SYSTEM,
+            messages=[{"role": "user", "content": user}],
+            **tuning_for("fit"),  # adaptive thinking + low effort -> fast first token
+        )
         try:
-            with client.messages.stream(
-                model=model, max_tokens=8000, system=_FIT_STREAM_SYSTEM,
-                messages=[{"role": "user", "content": user}],
-            ) as stream:
+            with client.messages.stream(**stream_kwargs) as stream:
                 for text in stream.text_stream:
                     buffer += text
                     complete, buffer = _extract_objects(buffer)
