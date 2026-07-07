@@ -90,10 +90,33 @@ streaming, verify→high). Deployed:
 - **not_met** conflicts (e.g. bevacizumab) → the system reliably & correctly rejects; draft concludes "not eligible" itself, so verify has nothing to override. This is the reliable Depth demo (Case 004).
 - **unknown** gates (e.g. EGFR untested) → the only honest scenario where "verify catches an overstated 'eligible'". A strong drafter (Sonnet 5) often hedges correctly, so the catch is NOT guaranteed. The honest lever to make it reliable is a genuinely weaker drafter (Haiku) — NOT withholding the fit results from the draft (that's mock/rigging, explicitly rejected by the user). Draft currently sees the full fit assessment.
 
-**Next — UX/credibility refactor BEFORE Day 5 (decided with user; all agreed):**
+**UX/credibility refactor BEFORE Day 5 — ✅ ALL 5 DONE (+ case-speed fix).**
 
-These fix real gaps the user found in the current build. Do them first — they also
-set up Day 5 cleanly.
+All five tasks below are implemented, verified, and committed on `main`:
+- (1) **Proactive fit triage** — `POST /api/triage/stream` runs real per-criterion
+  fit across the top N (cap 5) matched candidates after Analyze, badges each
+  (✅/❓/❌ + signal looks_eligible/needs_workup/conflict), sorts by fit; full
+  items cached client-side for instant drill-down + 3-agent reuse.
+- (2) **Flow order** — trials gated behind Analyze (no mount-time broad fetch);
+  case-switch clears trials/fit/triage and prompts "Analyze first".
+- (3) **Real pathology-report format** — `patient.py` reports rebuilt as an
+  integrated neuropathology report (patient/specimen, clinical history,
+  microscopic, named IHC clones + assay platforms, WHO CNS5 integrated dx, demo
+  sign-out) via a `_report()` builder.
+- (4) **Real molecular provenance** — each case maps to a real de-identified TCGA
+  sample (cBioPortal `lgggbm_tcga_pub`, Cell 2016, PMID 26824661); real curated
+  markers + real variant calls; `/api/patients` returns `provenance`; UI shows a
+  "Real molecular data · de-identified" card + clickable cBioPortal link. See
+  memory `glioma-case-provenance` for the case→sample map.
+- (5) **Preferences out of the chart** — preference wording stripped from reports
+  (belongs in the Day-5 form).
+- (+) **Case-speed fix** — `/api/patients` returns reports inline; case-switch is
+  now pure in-memory (no per-switch fetch).
+- Verified: all 4 cases still classify to their intended WHO CNS5 diagnosis on
+  the new real-data reports. REAL molecular vs CONSTRUCTED clinical layer is
+  labeled in every report (honesty).
+
+**Superseded task detail (kept for rationale; all now done):**
 
 1. **Proactive fit triage, not one-by-one clicking (the big one).** Current flow makes
    the user click each trial to check fit. Redesign: `Analyze` → classification + matched
