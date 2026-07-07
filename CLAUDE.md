@@ -60,13 +60,11 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 | File | What it is |
 |------|-----------|
 | **`docs/PRD-v2-full.md`** | **Canonical PRD** — full current direction. Start here. |
-| `docs/PRD-v1-lean.md` | Earlier leaner PRD (compact architecture). Reference. |
-| `docs/PRD-中文版.md` | Chinese PRD **— still OLD GBM framing; needs syncing to v2** (for the biomedical family reviewer). |
 | **`docs/six-day-build.md`** | **The execution plan for July 7–13** — day-by-day, stack locked, cut-line. Follow this to build. |
-| `docs/one-day-demo.md` | Bare-minimum cut — closest to the actual MVP shape. |
-| `docs/five-day-build.md` | Fuller build plan (AACT/RxNorm/openFDA) — reference; MVP uses live API + Postgres instead. |
 | `docs/demo_script.md` | Pitch script + pre-loaded Q&A. |
 | `docs/demo_data_pack.md` | Real trials aligned to a synthetic GBM case; rehearsal/fallback. |
+
+> Superseded planning docs (PRD-v1-lean, PRD-中文版, one-day-demo, five-day-build) were removed on Jul 7 to reduce confusion — all recoverable from git history. Regenerate a synced Chinese PRD on demand if the family reviewer needs one.
 
 ---
 
@@ -74,7 +72,7 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 
 - **Done**: direction locked; PRD-v2 written; planning docs in `docs/`. Repo scaffolded.
 - **Next**:
-  1. (Optional) Sync `docs/PRD-中文版.md` to v2 for the family reviewer.
+  1. (Optional) Regenerate a Chinese PRD synced to v2 for the family reviewer, if needed.
   2. Produce/execute the **6-day build**: live ClinicalTrials.gov + report parse → WHO classification → Trial Fit Assessment → 3-agent verification → two views (clinician primary, shared-decision) → deploy → record 3-min video.
 
 ---
