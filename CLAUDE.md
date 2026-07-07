@@ -90,10 +90,55 @@ streaming, verify→high). Deployed:
 - **not_met** conflicts (e.g. bevacizumab) → the system reliably & correctly rejects; draft concludes "not eligible" itself, so verify has nothing to override. This is the reliable Depth demo (Case 004).
 - **unknown** gates (e.g. EGFR untested) → the only honest scenario where "verify catches an overstated 'eligible'". A strong drafter (Sonnet 5) often hedges correctly, so the catch is NOT guaranteed. The honest lever to make it reliable is a genuinely weaker drafter (Haiku) — NOT withholding the fit results from the draft (that's mock/rigging, explicitly rejected by the user). Draft currently sees the full fit assessment.
 
-**Next (Day 5→6):**
-1. **Day 5** — shared-decision workspace: plain-language agent (patient-friendly rendering), patient-preference capture (travel / QoL / caregiver / phase / financial), shared-decision summary where preferences visibly change the ranking (heuristic sort, NOT autonomous recommendation — see red lines). Wire full flow: report → classify → fit → review → explain → preferences → summary.
-2. **Day 6** — polish, lock the demo case, record 3-min video (`docs/demo_script.md`), 100–200 word summary, make repo public, submit before Jul 13 9pm ET.
-3. Optional: a "drafting model" toggle (Sonnet 5 ↔ Haiku) to make the Case 001 verify-catch reliable for the demo (honest capability-tiering).
+**Next — UX/credibility refactor BEFORE Day 5 (decided with user; all agreed):**
+
+These fix real gaps the user found in the current build. Do them first — they also
+set up Day 5 cleanly.
+
+1. **Proactive fit triage, not one-by-one clicking (the big one).** Current flow makes
+   the user click each trial to check fit. Redesign: `Analyze` → classification + matched
+   candidates → automatically (or one "Assess candidates" click) run the real per-criterion
+   fit across the **top 3–5** candidates → annotate each trial with a fit badge (✅N ❓N ❌N)
+   and sort by fit → clinician drills into one for the full table + 3-agent verify. Frame as
+   **fit triage for clinician review, NOT discovery/recommendation** (stays inside the
+   "not a trial finder" red line; candidate set still comes from condition-scoping). Cost:
+   one Claude call per triaged trial (~15s) — cap at 3–5, stream progress, warm before demos.
+2. **Fix case-switch + flow order (Q1/Q2).** Switching the case dropdown currently does NOT
+   refetch trials (they only update on `Analyze`), which is confusing. On case switch: clear
+   trials/fit and prompt "Analyze to match". Guide the flow so `Analyze` clearly comes first
+   (fit of a given trial is order-independent, but the trial list + classification depend on
+   Analyze).
+3. **Reports must look like a REAL pathology/molecular chart (format is real, content mock).**
+   Rebuild `patient.py` reports in real report structure: demographics / specimen / clinical
+   history / gross + microscopic description / **named assay platforms** (NGS panel name, IHC
+   clone IDs) / integrated diagnosis per WHO CNS5 / signing pathologist.
+4. **Ground molecular markers in REAL public de-identified data (cBioPortal / TCGA).** Verified
+   feasible: `https://www.cbioportal.org/api/studies/gbm_tcga` — 619 real de-identified GBM
+   samples, no key. Pull a real sample's molecular profile (IDH/MGMT/EGFR/subtype), render it
+   into the report, and **show the provenance in the UI** (e.g. "source: TCGA-06-XXXX,
+   cBioPortal gbm_tcga" + link) — a real credibility win the user wants to show judges. TCGA is
+   already de-identified at source (barcodes, no names). Boundary: TCGA gives real molecular +
+   basic clinical only; the **clinical narrative (prior bevacizumab, recurrence), the "EGFR not
+   yet tested" gate, and preferences are constructed** demo layers (no API has them) — label
+   them as illustrative. Hybrid = real molecular (cited) + transparent constructed clinical layer.
+5. **Move patient preferences OUT of the chart into the shared-decision layer (Day 5).** A real
+   chart never contains "prefers not to travel". Preferences (travel / QoL vs aggressive /
+   caregiver / phase wariness / financial) are captured in a **separate Day 5 form, entered by
+   the patient (doctor-guided)** — not in `patient.py` reports. Strip the preference sentences
+   currently leaking into the reports; keep only clinical facts (location may stay as a
+   demographic/logistics fact, but drop "prefers/wary" wording).
+
+**Then Day 5 — shared-decision workspace:** plain-language agent (renders the verified
+per-trial analysis for patients), the preference form from (5), and a shared-decision summary
+where preferences **visibly re-rank** the options (heuristic sort + documented rationale, NOT
+autonomous recommendation — see red lines). Wire the full flow: report → classify → fit(triage)
+→ verify → explain → preferences → summary.
+
+**Day 6 —** polish, lock the demo case, record 3-min video (`docs/demo_script.md`), 100–200 word
+summary, make repo public, submit before Jul 13 9pm ET.
+
+**Optional:** a "drafting model" toggle (Sonnet 5 ↔ Haiku) to make the Case 001 verify-catch
+reliable for the demo (honest capability-tiering, per the honest findings above).
 
 **How to run locally:** backend `cd backend && ../.venv/bin/uvicorn app.main:app --reload --port 8000`; frontend `cd frontend && npm run dev` (needs `frontend/.env.local` NEXT_PUBLIC_API_URL=http://127.0.0.1:8000).
 
