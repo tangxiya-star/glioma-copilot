@@ -18,7 +18,6 @@ type ClassifyResp = {
   trial_condition: string;
 };
 type Patient = { id: string; label: string; report: string };
-type PatientSummary = { id: string; label: string };
 type Trial = { nct_id: string; title: string; locations: string[]; url: string };
 
 type FitItem = {
@@ -77,7 +76,7 @@ const VSTATUS = {
 
 export default function Home() {
   const [report, setReport] = useState("");
-  const [cases, setCases] = useState<PatientSummary[]>([]);
+  const [cases, setCases] = useState<Patient[]>([]);
   const [caseId, setCaseId] = useState("");
   const [trials, setTrials] = useState<Trial[] | null>(null);
   const [result, setResult] = useState<ClassifyResp | null>(null);
@@ -97,18 +96,23 @@ export default function Home() {
   const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
+    // Pull all synthetic cases ONCE (reports inline) — switching is then instant.
     fetch(`${API_URL}/api/patients`)
       .then((r) => r.json())
-      .then((d) => {
+      .then((d: { patients: Patient[] }) => {
         setCases(d.patients);
-        if (d.patients[0]) loadCase(d.patients[0].id);
-      });
+        if (d.patients[0]) loadCase(d.patients[0].id, d.patients);
+      })
+      .catch(() => {});
     fetch(`${API_URL}/api/trials?limit=20`)
       .then((r) => r.json())
-      .then((d) => setTrials(d.trials));
+      .then((d) => setTrials(d.trials))
+      .catch(() => {});
   }, []);
 
-  function loadCase(id: string) {
+  // No fetch — the report is already in memory. `list` covers the first call
+  // before `cases` state has flushed.
+  function loadCase(id: string, list: Patient[] = cases) {
     setCaseId(id);
     setResult(null);
     setFit(null);
@@ -116,9 +120,7 @@ export default function Home() {
     setReview(null);
     setTriage({});
     setMatchedCondition("");
-    fetch(`${API_URL}/api/patient?id=${id}`)
-      .then((r) => r.json())
-      .then((p: Patient) => setReport(p.report));
+    setReport(list.find((p) => p.id === id)?.report ?? "");
   }
 
   async function analyze() {

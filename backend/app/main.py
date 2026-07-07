@@ -96,8 +96,15 @@ def health():
 
 @app.get("/api/patients")
 def patients():
-    """List the synthetic demo cases (spanning the glioma spectrum)."""
-    return {"patients": [{"id": p["id"], "label": p["label"]} for p in SYNTHETIC_PATIENTS]}
+    """List the synthetic demo cases (spanning the glioma spectrum).
+
+    Reports are small static strings, so we return them inline — the frontend
+    caches the full set and case-switching is instant (no per-switch fetch).
+    """
+    return {"patients": [
+        {"id": p["id"], "label": p["label"], "report": p["report"]}
+        for p in SYNTHETIC_PATIENTS
+    ]}
 
 
 @app.get("/api/patient")
