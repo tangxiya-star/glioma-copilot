@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .config import ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGINS
+from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for
 from .db import db_ping
 
 app = FastAPI(title="Glioma Copilot API", version="0.1.0")
@@ -39,7 +39,7 @@ def health():
         db_ok = db_ping()
     except Exception:
         db_ok = False
-    return {"status": "ok", "db": db_ok, "model": CLAUDE_MODEL}
+    return {"status": "ok", "db": db_ok, "models": AGENT_MODELS}
 
 
 class ExtractRequest(BaseModel):
@@ -49,8 +49,9 @@ class ExtractRequest(BaseModel):
 @app.post("/api/extract")
 def extract(req: ExtractRequest):
     """Minimal grounded extraction call — scaffold proof, deepened on Day 1/2."""
+    model = model_for("extract")
     msg = client.messages.create(
-        model=CLAUDE_MODEL,
+        model=model,
         max_tokens=500,
         system=(
             "You extract structured molecular markers from a glioma pathology "
@@ -59,4 +60,4 @@ def extract(req: ExtractRequest):
         ),
         messages=[{"role": "user", "content": req.report}],
     )
-    return {"model": CLAUDE_MODEL, "raw": msg.content[0].text}
+    return {"model": model, "raw": msg.content[0].text}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-type Health = { status: string; db: boolean; model: string };
+type Health = { status: string; db: boolean; models: Record<string, string> };
 
 export default function Home() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -31,17 +31,29 @@ export default function Home() {
         {error && <p className="text-red-500 text-sm">❌ {error}</p>}
         {!error && !health && <p className="text-neutral-500 text-sm">Checking…</p>}
         {health && (
-          <ul className="text-sm space-y-1">
-            <li>
-              API status: <b>{health.status}</b> ✅
-            </li>
-            <li>
-              Database: <b>{health.db ? "connected ✅" : "down ❌"}</b>
-            </li>
-            <li>
-              Model: <b>{health.model}</b>
-            </li>
-          </ul>
+          <div className="text-sm space-y-3">
+            <ul className="space-y-1">
+              <li>
+                API status: <b>{health.status}</b> ✅
+              </li>
+              <li>
+                Database: <b>{health.db ? "connected ✅" : "down ❌"}</b>
+              </li>
+            </ul>
+            <div>
+              <p className="font-medium mb-1">Per-agent models</p>
+              <ul className="space-y-0.5 font-mono text-xs">
+                {Object.entries(health.models).map(([agent, model]) => (
+                  <li key={agent} className="flex justify-between gap-4">
+                    <span className="text-neutral-500">{agent}</span>
+                    <span className={model.includes("opus") ? "text-violet-500 font-semibold" : ""}>
+                      {model}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         )}
       </div>
 
