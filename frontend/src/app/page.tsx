@@ -40,6 +40,27 @@ const VERDICT = {
   unknown: { icon: "❓", label: "unknown", cls: "text-amber-600" },
 };
 
+type Draft = { assessment: string; claims: { claim: string; citation: string }[] };
+type VerifyEntry = {
+  claim: string;
+  status: "supported" | "overstated" | "unsupported";
+  rewrite: string;
+  reason: string;
+};
+type Review = {
+  stage: string;
+  draft?: Draft;
+  verify?: { log: VerifyEntry[] };
+  investigate?: { steps: { item: string; action: string }[] };
+  done?: boolean;
+};
+
+const VSTATUS = {
+  supported: { icon: "✅", cls: "text-emerald-600", label: "supported" },
+  overstated: { icon: "⚠️", cls: "text-amber-600", label: "overstated" },
+  unsupported: { icon: "❌", cls: "text-red-600", label: "unsupported" },
+};
+
 export default function Home() {
   const [report, setReport] = useState("");
   const [cases, setCases] = useState<PatientSummary[]>([]);
@@ -52,6 +73,9 @@ export default function Home() {
   const [fitNct, setFitNct] = useState("");
   const [fitLoading, setFitLoading] = useState(false);
   const [matchedCondition, setMatchedCondition] = useState("");
+
+  const [review, setReview] = useState<Review | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/patients`)
@@ -102,6 +126,7 @@ export default function Home() {
     setFitNct(nct_id);
     setFitLoading(true);
     setFit(null);
+    setReview(null);
     try {
       const r = await fetch(`${API_URL}/api/fit/stream`, {
         method: "POST",
@@ -144,6 +169,48 @@ export default function Home() {
       }
     } finally {
       setFitLoading(false);
+    }
+  }
+
+  async function runReview() {
+    if (!fit) return;
+    setReviewLoading(true);
+    setReview({ stage: "starting" });
+    try {
+      const r = await fetch(`${API_URL}/api/review/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nct_id: fit.trial.nct_id, patient_id: caseId }),
+      });
+      if (!r.body) return;
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let msg;
+          try {
+            msg = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          if (msg.type === "stage") setReview((p) => ({ ...p!, stage: msg.stage }));
+          else if (msg.type === "draft") setReview((p) => ({ ...p!, draft: msg.draft }));
+          else if (msg.type === "verify") setReview((p) => ({ ...p!, verify: msg.verify }));
+          else if (msg.type === "investigate")
+            setReview((p) => ({ ...p!, investigate: msg.investigate }));
+          else if (msg.type === "done") setReview((p) => ({ ...p!, done: true }));
+        }
+      }
+    } finally {
+      setReviewLoading(false);
     }
   }
 
@@ -317,6 +384,107 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Day 4: three-agent verification loop */}
+              <div className="pt-2">
+                <button
+                  onClick={runReview}
+                  disabled={reviewLoading}
+                  className="text-sm rounded-md bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-3 py-1.5"
+                >
+                  {reviewLoading ? "Running 3-agent review…" : "Run 3-agent verification"}
+                </button>
+              </div>
+
+              {review && (
+                <div className="space-y-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                  {/* Drafting agent */}
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-400">
+                      1 · Drafting agent
+                    </p>
+                    {review.draft ? (
+                      <>
+                        <p className="text-sm font-medium mt-1">{review.draft.assessment}</p>
+                        <ul className="mt-1 space-y-0.5">
+                          {review.draft.claims.map((cl, i) => (
+                            <li key={i} className="text-xs text-neutral-500">
+                              • {cl.claim}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <p className="text-sm text-neutral-400 animate-pulse">drafting…</p>
+                    )}
+                  </div>
+
+                  {/* Verification agent */}
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-400">
+                      2 · Verification agent{" "}
+                      <span className="text-neutral-300">(Opus · grounds every claim to source)</span>
+                    </p>
+                    {review.verify ? (
+                      <ul className="mt-1 space-y-2">
+                        {review.verify.log.map((e, i) => {
+                          const v = VSTATUS[e.status] ?? VSTATUS.supported;
+                          const flagged = e.status !== "supported";
+                          return (
+                            <li
+                              key={i}
+                              className={`text-sm rounded-md px-3 py-2 ${
+                                flagged
+                                  ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800"
+                                  : ""
+                              }`}
+                            >
+                              <span className={v.cls}>
+                                {v.icon} {v.label}
+                              </span>{" "}
+                              <span className="text-neutral-600 dark:text-neutral-300">{e.claim}</span>
+                              {flagged && (
+                                <div className="mt-1 text-xs">
+                                  <span className="font-medium text-amber-700 dark:text-amber-300">
+                                    ↳ rewritten:
+                                  </span>{" "}
+                                  {e.rewrite}
+                                  <span className="block text-neutral-400 mt-0.5">{e.reason}</span>
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-neutral-400 animate-pulse">
+                        {review.draft ? "verifying…" : "waiting…"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Investigation agent */}
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-400">
+                      3 · Investigation agent
+                    </p>
+                    {review.investigate ? (
+                      <ul className="mt-1 space-y-1">
+                        {review.investigate.steps.map((s, i) => (
+                          <li key={i} className="text-sm">
+                            <span className="font-medium">{s.item}</span>
+                            <span className="block text-xs text-neutral-500">→ {s.action}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-neutral-400 animate-pulse">
+                        {review.verify ? "investigating…" : "waiting…"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
