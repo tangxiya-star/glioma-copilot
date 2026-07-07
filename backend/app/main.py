@@ -16,8 +16,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from .classify import classify_who_cns5
 from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for
-from .db import db_ping
+from .db import db_counts, db_ping, init_schema, upsert_patient, upsert_trials
 from .patient import SYNTHETIC_PATIENT
 from .trials import fetch_glioma_trials
 
@@ -32,6 +33,15 @@ app.add_middleware(
 )
 
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
+
+
+@app.on_event("startup")
+def _startup():
+    """Ensure tables exist. Non-fatal if the DB is briefly unreachable."""
+    try:
+        init_schema()
+    except Exception as e:
+        print(f"[startup] schema init skipped: {e}")
 
 
 def text_from(msg) -> str:
@@ -81,11 +91,22 @@ def patient():
 
 @app.get("/api/trials")
 def trials(limit: int = 20):
-    """Live recruiting glioma trials from ClinicalTrials.gov v2."""
+    """Live recruiting glioma trials from ClinicalTrials.gov v2 (also cached to DB)."""
     try:
-        return {"trials": fetch_glioma_trials(page_size=limit)}
+        result = fetch_glioma_trials(page_size=limit)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"ClinicalTrials.gov error: {e}")
+    try:
+        upsert_trials(result)
+    except Exception as e:
+        print(f"[trials] store skipped: {e}")
+    return {"trials": result}
+
+
+@app.get("/api/db/summary")
+def db_summary():
+    """Row counts — proves pulled trials + patients are stored and queryable."""
+    return db_counts()
 
 
 class ExtractRequest(BaseModel):
@@ -121,3 +142,51 @@ def extract(req: ExtractRequest):
     )
     raw = text_from(msg)
     return {"model": model, "parsed": parse_json(raw), "raw": raw}
+
+
+# --- WHO CNS5 classification: Claude normalizes -> deterministic rule engine ---
+
+_PROFILE_SYSTEM = (
+    "You read a glioma pathology/molecular report and normalize it into fixed "
+    "fields for a downstream WHO CNS5 rule engine. You do NOT diagnose — you only "
+    "report what the text states, each field with the exact source span it came "
+    "from. If a field is not stated or is pending/untested, use value \"unknown\".\n\n"
+    "Return STRICT JSON only, every field an object {\"value\": <enum>, \"source\": <quote>}:\n"
+    "{\n"
+    '  "idh": {"value": "mutant|wildtype|unknown", "source": ""},\n'
+    '  "codeletion_1p19q": {"value": "codeleted|intact|unknown", "source": ""},\n'
+    '  "cdkn2a_b": {"value": "homozygous_deletion|retained|unknown", "source": ""},\n'
+    '  "egfr_amp": {"value": "amplified|not_amplified|unknown", "source": ""},\n'
+    '  "tert_promoter": {"value": "mutated|wildtype|unknown", "source": ""},\n'
+    '  "chr7_10": {"value": "gain7_loss10|no|unknown", "source": ""},\n'
+    '  "microvascular_proliferation": {"value": "present|absent|unknown", "source": ""},\n'
+    '  "necrosis": {"value": "present|absent|unknown", "source": ""},\n'
+    '  "atrx": {"value": "lost|retained|unknown", "source": ""},\n'
+    '  "mgmt": {"value": "methylated|unmethylated|unknown", "source": ""},\n'
+    '  "h3k27m": {"value": "mutant|not_detected|unknown", "source": ""}\n'
+    "}"
+)
+
+
+@app.post("/api/classify")
+def classify(req: ExtractRequest):
+    """Report -> normalized profile (Claude) -> WHO CNS5 diagnosis (deterministic)."""
+    report = req.report or SYNTHETIC_PATIENT["report"]
+    model = model_for("classify")
+    msg = client.messages.create(
+        model=model,
+        max_tokens=1200,
+        system=_PROFILE_SYSTEM,
+        messages=[{"role": "user", "content": report}],
+    )
+    profile = parse_json(text_from(msg))
+    if profile is None:
+        raise HTTPException(status_code=502, detail="Could not normalize report into a profile")
+    classification = classify_who_cns5(profile)
+    # Persist the demo patient with its profile + classification (best-effort).
+    if req.report is None:
+        try:
+            upsert_patient(SYNTHETIC_PATIENT, profile, classification)
+        except Exception as e:
+            print(f"[classify] store skipped: {e}")
+    return {"model": model, "profile": profile, "classification": classification}

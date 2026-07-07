@@ -26,6 +26,10 @@ DISEASE COURSE:
 - Now: MRI shows measurable enhancing recurrence (RANO). No prior therapy for
   this recurrence.
 
+HISTOLOGY (initial resection):
+Diffuse astrocytic glioma with MICROVASCULAR PROLIFERATION and NECROSIS.
+Ki-67 proliferation index ~25%.
+
 MOLECULAR / IHC (from initial resection):
 - IDH1 R132H: NEGATIVE (IHC). IDH1/2 sequencing: wild-type.
 - MGMT promoter: METHYLATED.
