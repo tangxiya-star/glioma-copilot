@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from .classify import classify_who_cns5
 from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for
 from .db import db_counts, db_ping, init_schema, upsert_patient, upsert_trials
-from .patient import SYNTHETIC_PATIENT
+from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient
 from .trials import fetch_glioma_trials
 
 app = FastAPI(title="Glioma Copilot API", version="0.1.0")
@@ -83,10 +83,16 @@ def health():
     return {"status": "ok", "db": db_ok, "models": AGENT_MODELS}
 
 
+@app.get("/api/patients")
+def patients():
+    """List the synthetic demo cases (spanning the glioma spectrum)."""
+    return {"patients": [{"id": p["id"], "label": p["label"]} for p in SYNTHETIC_PATIENTS]}
+
+
 @app.get("/api/patient")
-def patient():
-    """The synthetic demo patient — safe to hardcode, no real PHI."""
-    return SYNTHETIC_PATIENT
+def patient(id: str | None = None):
+    """A synthetic demo patient by id (defaults to Case 001). No real PHI."""
+    return get_patient(id)
 
 
 @app.get("/api/trials")

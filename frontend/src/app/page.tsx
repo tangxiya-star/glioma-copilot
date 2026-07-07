@@ -19,6 +19,7 @@ type ClassifyResp = {
   classification: Classification;
 };
 type Patient = { id: string; label: string; report: string };
+type PatientSummary = { id: string; label: string };
 type Trial = {
   nct_id: string;
   title: string;
@@ -29,22 +30,31 @@ type Trial = {
 
 export default function Home() {
   const [report, setReport] = useState("");
-  const [patientLabel, setPatientLabel] = useState("");
+  const [cases, setCases] = useState<PatientSummary[]>([]);
+  const [caseId, setCaseId] = useState("");
   const [trials, setTrials] = useState<Trial[] | null>(null);
   const [result, setResult] = useState<ClassifyResp | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/patient`)
+    fetch(`${API_URL}/api/patients`)
       .then((r) => r.json())
-      .then((p: Patient) => {
-        setReport(p.report);
-        setPatientLabel(p.label);
+      .then((d) => {
+        setCases(d.patients);
+        if (d.patients[0]) loadCase(d.patients[0].id);
       });
     fetch(`${API_URL}/api/trials?limit=20`)
       .then((r) => r.json())
       .then((d) => setTrials(d.trials));
   }, []);
+
+  function loadCase(id: string) {
+    setCaseId(id);
+    setResult(null);
+    fetch(`${API_URL}/api/patient?id=${id}`)
+      .then((r) => r.json())
+      .then((p: Patient) => setReport(p.report));
+  }
 
   async function analyze() {
     setLoading(true);
@@ -86,7 +96,17 @@ export default function Home() {
               {loading ? "Analyzing…" : "Analyze"}
             </button>
           </div>
-          {patientLabel && <p className="text-xs text-neutral-500">{patientLabel}</p>}
+          <select
+            value={caseId}
+            onChange={(e) => loadCase(e.target.value)}
+            className="w-full text-sm border border-neutral-200 dark:border-neutral-800 bg-transparent rounded-md px-2 py-1.5"
+          >
+            {cases.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
           <textarea
             value={report}
             onChange={(e) => setReport(e.target.value)}
@@ -103,11 +123,9 @@ export default function Home() {
                 </p>
                 <p className="text-lg font-bold">
                   {c.diagnosis}
-                  {c.grade != null && (
-                    <span className="ml-2 text-sm font-normal text-neutral-500">
-                      grade {c.grade}
-                    </span>
-                  )}
+                  <span className="ml-2 text-sm font-normal text-neutral-500">
+                    {c.grade != null ? `grade ${c.grade}` : "grade pending histologic review"}
+                  </span>
                 </p>
               </div>
 

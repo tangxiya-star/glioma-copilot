@@ -127,4 +127,10 @@ def _grade_oligo_astro(profile: dict[str, Any], step) -> int | None:
     if _val(profile, "necrosis") == "present" or _val(profile, "microvascular_proliferation") == "present":
         step("Necrosis / microvascular proliferation → higher grade", "necrosis or MVP present")
         return 4
-    return None  # grade 2 vs 3 needs mitotic detail not modeled here
+    # grade 2 vs 3 depends on mitotic activity, which this molecular rule engine
+    # deliberately does not infer — flag it rather than guess.
+    step(
+        "Grade 2 vs 3 not determined by molecular features",
+        "no high-grade feature (CDKN2A del / necrosis / MVP); mitotic grading needs histologic review",
+    )
+    return None
