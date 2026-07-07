@@ -18,9 +18,16 @@ from pydantic import BaseModel
 
 from .classify import classify_who_cns5
 from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for
-from .db import db_counts, db_ping, init_schema, upsert_patient, upsert_trials
+from .db import (
+    db_counts,
+    db_ping,
+    init_schema,
+    store_eligibility_results,
+    upsert_patient,
+    upsert_trials,
+)
 from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient
-from .trials import fetch_glioma_trials
+from .trials import fetch_glioma_trials, fetch_trial
 
 app = FastAPI(title="Glioma Copilot API", version="0.1.0")
 
@@ -95,11 +102,27 @@ def patient(id: str | None = None):
     return get_patient(id)
 
 
+def condition_for_diagnosis(diagnosis: str | None) -> str:
+    """Map a WHO CNS5 diagnosis to a ClinicalTrials.gov condition query (candidate scoping)."""
+    d = (diagnosis or "").lower()
+    if "glioblastoma" in d:
+        return "glioblastoma"
+    if "oligodendroglioma" in d:
+        return "oligodendroglioma"
+    if "astrocytoma" in d:
+        return "astrocytoma"
+    return "glioma"
+
+
 @app.get("/api/trials")
-def trials(limit: int = 20):
-    """Live recruiting glioma trials from ClinicalTrials.gov v2 (also cached to DB)."""
+def trials(limit: int = 20, condition: str = "glioma"):
+    """Live recruiting trials for a condition (also cached to DB).
+
+    Pass `condition` (e.g. from the patient's diagnosis) to narrow candidates to
+    the patient's tumor type. Defaults to broad 'glioma'.
+    """
     try:
-        result = fetch_glioma_trials(page_size=limit)
+        result = fetch_glioma_trials(page_size=limit, condition=condition)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"ClinicalTrials.gov error: {e}")
     try:
@@ -195,4 +218,87 @@ def classify(req: ExtractRequest):
             upsert_patient(SYNTHETIC_PATIENT, profile, classification)
         except Exception as e:
             print(f"[classify] store skipped: {e}")
-    return {"model": model, "profile": profile, "classification": classification}
+    return {
+        "model": model,
+        "profile": profile,
+        "classification": classification,
+        "trial_condition": condition_for_diagnosis(classification.get("diagnosis")),
+    }
+
+
+# --- Day 3: per-criterion Trial Fit Assessment (met / not-met / unknown) ---
+
+_FIT_SYSTEM = (
+    "You are a clinical-trial eligibility screener for a neuro-oncology clinician. "
+    "Given a PATIENT REPORT and a trial's ELIGIBILITY CRITERIA, split the criteria "
+    "into discrete inclusion/exclusion items and judge each against the patient.\n\n"
+    "VERDICT = the patient's compatibility with enrollment on that line:\n"
+    "  - \"met\": the patient satisfies this line (for an EXCLUSION, means the patient "
+    "does NOT have the excluding condition — handle negation carefully, e.g. "
+    "'no prior bevacizumab' + patient never received it => met).\n"
+    "  - \"not_met\": the patient clearly fails/violates this line.\n"
+    "  - \"unknown\": the patient's data does not say; state what test/info is needed.\n\n"
+    "Rules: judge ONLY from the report — never assume unstated facts. For every item, "
+    "quote the exact eligibility line in `citation`. Focus on the most decision-relevant "
+    "criteria (up to ~14). Return STRICT JSON only:\n"
+    "{\n"
+    '  "items": [\n'
+    '    {"criterion": "", "kind": "inclusion|exclusion", "verdict": "met|not_met|unknown", '
+    '"citation": "<exact eligibility line>", "rationale": "<short, what in the report decided it>"}\n'
+    "  ]\n"
+    "}"
+)
+
+
+class FitRequest(BaseModel):
+    nct_id: str
+    patient_id: str | None = None
+
+
+@app.post("/api/fit")
+def fit(req: FitRequest):
+    """Assess one trial's eligibility criteria against one patient, per criterion."""
+    patient = get_patient(req.patient_id)
+    trial = fetch_trial(req.nct_id)
+    if trial is None:
+        raise HTTPException(status_code=404, detail=f"Trial {req.nct_id} not found")
+    if not trial.get("eligibility"):
+        raise HTTPException(status_code=422, detail="Trial has no eligibility text")
+
+    model = model_for("fit")
+    user = (
+        f"PATIENT REPORT:\n{patient['report']}\n\n"
+        f"TRIAL {trial['nct_id']} — {trial['title']}\n"
+        f"ELIGIBILITY CRITERIA:\n{trial['eligibility']}"
+    )
+    msg = client.messages.create(
+        model=model,
+        max_tokens=8000,
+        system=_FIT_SYSTEM,
+        messages=[{"role": "user", "content": user}],
+    )
+    parsed = parse_json(text_from(msg))
+    if parsed is None or "items" not in parsed:
+        raise HTTPException(status_code=502, detail="Could not parse fit assessment")
+    items = parsed["items"]
+
+    summary = {"met": 0, "not_met": 0, "unknown": 0}
+    for it in items:
+        if it.get("verdict") in summary:
+            summary[it["verdict"]] += 1
+
+    try:
+        upsert_patient(patient)        # ensure FK targets exist before storing results
+        upsert_trials([trial])
+        store_eligibility_results(patient["id"], trial["nct_id"], items)
+    except Exception as e:
+        print(f"[fit] store skipped: {e}")
+
+    return {
+        "model": model,
+        "patient_id": patient["id"],
+        "trial": {"nct_id": trial["nct_id"], "title": trial["title"], "url": trial["url"],
+                  "locations": trial["locations"]},
+        "items": items,
+        "summary": summary,
+    }

@@ -81,6 +81,31 @@ def upsert_trials(trials: list[dict[str, Any]]) -> int:
     return len(trials)
 
 
+def store_eligibility_results(patient_id: str, nct_id: str, items: list[dict[str, Any]]) -> int:
+    """Replace this patient×trial's fit verdicts with a fresh set."""
+    with psycopg.connect(DATABASE_URL) as conn:
+        conn.execute(
+            "DELETE FROM eligibility_results WHERE patient_id = %s AND nct_id = %s",
+            (patient_id, nct_id),
+        )
+        for it in items:
+            conn.execute(
+                """
+                INSERT INTO eligibility_results (patient_id, nct_id, criterion, kind, verdict, citation)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    patient_id,
+                    nct_id,
+                    it.get("criterion"),
+                    it.get("kind"),
+                    it.get("verdict"),
+                    it.get("citation"),
+                ),
+            )
+    return len(items)
+
+
 def db_counts() -> dict[str, int]:
     """Row counts — proves the stored data is queryable."""
     with psycopg.connect(DATABASE_URL) as conn:

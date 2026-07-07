@@ -52,10 +52,28 @@ def _flatten(study: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def fetch_glioma_trials(page_size: int = 20) -> list[dict[str, Any]]:
-    """Pull recruiting glioma trials, newest-relevant first, flattened."""
+def fetch_trial(nct_id: str) -> dict[str, Any] | None:
+    """Fetch a single study by NCT id (fresh eligibility text)."""
+    resp = requests.get(
+        f"{CTGOV_URL}/{nct_id}",
+        params={"fields": ",".join(_FIELDS)},
+        timeout=30,
+    )
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    return _flatten(resp.json())
+
+
+def fetch_glioma_trials(page_size: int = 20, condition: str = "glioma") -> list[dict[str, Any]]:
+    """Pull recruiting trials for a condition, flattened.
+
+    `condition` narrows the candidate set to the patient's tumor type
+    (e.g. glioblastoma / astrocytoma / oligodendroglioma) — candidate scoping
+    for clinician review, NOT autonomous discovery/recommendation.
+    """
     params = {
-        "query.cond": "glioma",
+        "query.cond": condition or "glioma",
         "filter.overallStatus": "RECRUITING",
         "pageSize": page_size,
         "fields": ",".join(_FIELDS),
