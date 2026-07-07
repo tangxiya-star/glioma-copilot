@@ -497,11 +497,11 @@ Agent orchestration
 
 ---
 
-## 13.3 Database / Graph
+## 13.3 Database
 
 ```text
-Neo4j
-Cypher
+PostgreSQL (Neon, hosted)
+psycopg (v3)
 ```
 
 Use for:
@@ -515,6 +515,12 @@ Drug → FDA Record
 Patient → Preference
 Patient → Candidate Trial
 ```
+
+> **Decision (Jul 7):** relationships are modeled in **Postgres**, not Neo4j.
+> The data set is small and these relationships express cleanly as tables +
+> join tables + foreign keys; Neo4j + Cypher would add setup and modeling
+> overhead not worth it inside the hackathon window. Neo4j is deferred to a
+> post-hackathon "graph" iteration (see §13.6).
 
 ---
 
@@ -564,13 +570,15 @@ Eligibility text extraction
 
 ---
 
-## 13.6 Optional
+## 13.6 Deferred / post-hackathon
 
 ```text
-PostgreSQL
+Neo4j + Cypher (graph relationships)
 ```
 
-Use if Neo4j feels too heavy for hackathon MVP.
+Considered as the primary store but **deferred**: for the MVP the same
+drug / trial / biomarker / sponsor / location relationships live in Postgres
+(§13.3). Revisit Neo4j only if relationship queries outgrow SQL joins.
 
 ---
 

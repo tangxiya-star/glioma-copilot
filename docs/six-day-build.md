@@ -13,12 +13,16 @@
 
 ## Stack (decided — don't re-debate)
 
-- **Language/app**: **Python + Streamlit** (fastest to a deployed public URL, one language for UI + agents; ideal for a beginner). *If a frontend-capable teammate exists → Next.js single page for a more polished demo; otherwise Streamlit.*
-- **DB**: **hosted Postgres** — **Neon** or **Supabase** (no local install).
+Matches the full PRD §13, with **Postgres in place of Neo4j** for the hackathon window. Decided Jul 7 — builder knows frontend, so we run the PRD's real stack rather than the Streamlit fallback.
+
+- **Frontend**: **Next.js / React + Tailwind CSS + shadcn/ui** (Framer Motion optional). Clinician workspace, shared-decision workspace, patient-preference form, trial cards, evidence citations.
+- **Backend**: **FastAPI (Python) + Pydantic**. API endpoints, trial retrieval, evidence-bundle construction, agent orchestration.
+- **DB**: **hosted Postgres — Neon** (no local install; already provisioned). Relationships (drug / trial / biomarker / sponsor / location / patient) modeled with SQL tables + joins, **not Neo4j** (deferred post-hackathon).
 - **Trials**: **live ClinicalTrials.gov v2 API** (`https://clinicaltrials.gov/api/v2/studies`), no key.
-- **LLM**: **Claude API** (`anthropic` Python SDK). Model: Claude Sonnet 5 for the agent calls (fast + capable); escalate a call to Opus 4.8 only if reasoning quality needs it.
-- **Deploy**: **Streamlit Community Cloud** (free, public URL, connects to the GitHub repo).
-- **Secrets**: `.env` locally (gitignored); Streamlit Cloud secrets for deploy. Never commit the API key.
+- **LLM**: **Claude API** (`anthropic` Python SDK, called from the FastAPI backend). Model: Claude Sonnet 5 for the agent calls (fast + capable); escalate a call to Opus 4.8 only if reasoning quality needs it. **Claude is not the source of truth — it only reasons over retrieved records.**
+- **Data processing**: Python + `requests` (ClinicalTrials.gov ingestion, eligibility text extraction); `pandas` only if needed.
+- **Deploy**: **frontend → Vercel**; **backend → Render / Railway / Fly.io** (free tier, public URL, redeploys on push from the GitHub repo).
+- **Secrets**: `.env` locally (gitignored); host-dashboard secrets for deploy (Vercel env vars for the frontend, backend-host env vars for `ANTHROPIC_API_KEY` + `DATABASE_URL`). Never commit the API key.
 
 ---
 
@@ -26,9 +30,10 @@
 
 - [ ] Hosted Postgres created (Neon/Supabase); copy the connection string.
 - [ ] Anthropic API key ready; confirm credits (hackathon usually provides them — check the Discord/guide).
-- [ ] Python env: `anthropic`, `psycopg[binary]`, `requests`, `streamlit`, `python-dotenv`.
+- [ ] Backend Python env: `fastapi`, `uvicorn`, `anthropic`, `psycopg[binary]`, `requests`, `pydantic`, `python-dotenv`.
+- [ ] Frontend: `npx create-next-app` (TypeScript + Tailwind), add shadcn/ui.
 - [ ] `.env` with `ANTHROPIC_API_KEY`, `DATABASE_URL`.
-- [ ] "Hello world" Streamlit app deployed to a **public URL** (proves the deploy path works before there's anything to lose).
+- [ ] "Hello world" deployed to **public URLs**: frontend on Vercel + backend `/health` on Render/Railway/Fly (proves the deploy path works before there's anything to lose).
 
 *(Claude will generate each of these as copy-paste steps when you start.)*
 
@@ -39,7 +44,7 @@
 Goal: one real trial, pulled live, shown in a deployed app, with one Claude call working.
 
 - [ ] Hardcode one synthetic glioma patient (molecular report text) in the repo.
-- [ ] Call ClinicalTrials.gov v2 API for `condition=glioma&status=RECRUITING`, pull ~20 trials; show titles in Streamlit.
+- [ ] Backend: call ClinicalTrials.gov v2 API for `condition=glioma&status=RECRUITING`, pull ~20 trials; expose via a FastAPI endpoint. Frontend: fetch and show titles.
 - [ ] One Claude call: given the report text, extract structured markers (IDH, MGMT, etc.) → display.
 - [ ] Redeploy.
 
@@ -54,7 +59,7 @@ Goal: paste a report → structured profile + WHO classification; trials stored 
 - [ ] **Extraction agent**: free-text molecular report → structured profile (markers, prior treatments, age, location), each field with the source span it came from.
 - [ ] **WHO CNS5 classification** from the marker set (IDH status → glioblastoma vs astrocytoma vs oligodendroglioma; grade; note if an older "GBM" label is reclassified). Cite the classification logic.
 - [ ] Postgres schema: `patients`, `trials`, `eligibility_results`. Store the pulled trials + patient.
-- [ ] Streamlit: a "paste report" box → shows profile + classification card.
+- [ ] Frontend: a "paste report" box → posts to the backend → shows profile + classification card.
 
 **Definition of done**: paste any synthetic glioma report → correct WHO classification + structured profile; candidate trials stored and queryable.
 
@@ -66,6 +71,8 @@ Goal: per-criterion eligibility screening for each candidate trial.
 
 - [ ] For each trial, split its eligibility criteria into discrete inclusion/exclusion items.
 - [ ] **Fit assessment**: for each criterion, judge **met / not-met / unknown (needs test X)** against the patient profile; handle **negation** ("no prior bevacizumab"); cite the eligibility text line for each verdict.
+- [ ] **[Tier 1] RxNorm drug normalization**: Claude extracts drug mentions (patient's prior meds + drug names in criteria) → RxNav REST API (`rxcui.json` exact, `approximateTerm.json` fuzzy fallback, `/related?tty=IN` to ingredient) → cache RxCUI in a `drug_norm` Postgres table → **deterministic** drug-identity comparison (so "Avastin" == "bevacizumab" is grounded, not model-guessed). 3-hour rule: if `/related` stalls, ship exact+fuzzy only.
+- [ ] **[Tier 2 stretch] ChEMBL mechanism/class match**: map a normalized drug → mechanism/ATC class (`molecule/search` + `mechanism.json`) to satisfy class-level criteria ("prior anti-VEGF therapy"). Only if Tier 0+1 are solid.
 - [ ] **Clinician view**: per-trial fit table (criteria + verdict + citation), plus which biomarkers matter and logistical barriers (travel/visit frequency from trial locations).
 
 **Definition of done**: clinician view shows, for real trials, each eligibility criterion as met/not-met/unknown with a citation — including at least one correctly-flagged "unknown, needs testing."
@@ -114,10 +121,12 @@ Goal: a submittable package with a safety net. **Deadline: Jul 13, 9:00 PM ET.**
 
 ## Cut-line (if behind schedule, drop in this order)
 
-1. Investigation agent (keep drafting + verification).
-2. Multiple demo cases → one polished case.
-3. Preference *re-ranking* logic → preferences just annotate the summary.
-4. Fancy UI → plain Streamlit components.
+1. ChEMBL mechanism/class match (Tier 2 stretch) — drop first.
+2. RxNorm normalization (Tier 1) → fall back to Claude-only drug matching if the core is at risk.
+3. Investigation agent (keep drafting + verification).
+4. Multiple demo cases → one polished case.
+5. Preference *re-ranking* logic → preferences just annotate the summary.
+6. Fancy UI → plain shadcn/ui components, minimal styling.
 
 **Never cut**: the verification catch (Claude Use), per-criterion fit with citations (Depth), and a deployed working URL + video (Demo). Those are the score.
 

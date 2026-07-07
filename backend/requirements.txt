@@ -1,5 +1,7 @@
+fastapi
+uvicorn[standard]
 anthropic
 psycopg[binary]
 requests
-streamlit
+pydantic
 python-dotenv

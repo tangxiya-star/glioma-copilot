@@ -45,12 +45,12 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 ## Tech decisions for the MVP build
 
 - **Data**: **live ClinicalTrials.gov v2 API** (real, full corpus, no key). Not AACT bulk ingestion.
-- **Store**: **Postgres** as the app datastore (hosted — Supabase/Neon). Not Neo4j.
-- **Drug-name normalization**: let **Claude** handle it. Skip RxNorm/ChEMBL.
+- **Store**: **Neon Postgres** as the app datastore (hosted). Not Neo4j.
+- **Drug-name normalization** *(revised Jul 7)*: **Claude extracts** drug mentions from free text → **RxNorm (via RxNav REST API, key-free) normalizes** them to a canonical RxCUI/ingredient, cached in Postgres. This grounds drug identity in an authoritative source (reinforces "Claude is not the source of truth"). **Tier 1** — do after the core lands. **ChEMBL (REST API)** adds mechanism/drug-class matching (e.g. "prior anti-VEGF therapy") — **Tier 2 stretch**, only if Tier 0+1 are solid.
 - **Regulatory**: openFDA JSON API is an optional groundedness add. **No FDA PDF parsing.**
 - **Agents**: Claude API — extraction, WHO CNS5 classification, drafting, verification, investigation, plain-language.
-- **Frontend**: single deployed app (Streamlit for near-zero frontend, or Next.js single page), public URL. Builder track requires shippable "software they could use without you in the room."
-- **Out of scope for MVP** (someday north-star only): Neo4j, AACT, RxNorm/ChEMBL, FDA PDF parsing.
+- **Frontend / stack** *(decided Jul 7)*: **Next.js (React + Tailwind + shadcn/ui) → Vercel**, **FastAPI backend → Render/Railway/Fly**, **Neon Postgres**. (Builder knows frontend, so the PRD's real stack, not the Streamlit fallback.) Builder track requires shippable "software they could use without you in the room."
+- **Out of scope for MVP** (someday north-star only): Neo4j, AACT, FDA PDF parsing. *(RxNorm/ChEMBL moved in-scope as Tier 1/2 — see drug-name line.)*
 - **Depth goes into the reasoning/verification layer** (visible in a 3-min demo; scores on Claude Use + Depth + Demo), NOT into invisible data plumbing.
 
 ---
