@@ -79,8 +79,8 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 
 ## How the user works (preferences)
 
-- Communicates in Chinese; wants direct, decisive guidance — give a recommendation, not a survey.
-- Relative beginner on infra (no SQL). When building: **write the SQL / connection / API / boilerplate for them**; they run it, check output, report errors.
+- Communicates in Chinese; wants direct, decisive guidance — give a recommendation, not a survey. Works ~5–7h/day on this and wants steady, visible progress — bias to building over deliberating; don't stall in decision loops.
+- Comfortable with frontend; less experienced with backend infra / SQL / deploy. When building: **write the SQL / connection / API / deploy boilerplate for them**; they run it, check output, report errors. Explains trade-offs when asked, but expects a clear recommendation to act on.
 - Has a biomedical family member (brother) as a domain reviewer — some docs are in Chinese for him. His wife has IDH-mutant glioma; handle the topic with care.
 - Iterated heavily on positioning — the decisions above are hard-won; don't reopen without new information.
 - Commits use name `touyuumiyabi`, email `tangxiya9906@gmail.com`, ending with the Claude co-author trailer. Original planning repo: `tangxiya-star/abridge-anthropic`.
