@@ -17,7 +17,15 @@ type ClassifyResp = {
   classification: Classification;
   trial_condition: string;
 };
-type Patient = { id: string; label: string; report: string };
+type Provenance = {
+  sample_id: string;
+  study: string;
+  study_name: string;
+  pmid: string;
+  url: string;
+  markers: Record<string, string>;
+};
+type Patient = { id: string; label: string; report: string; provenance?: Provenance | null };
 type Trial = { nct_id: string; title: string; locations: string[]; url: string };
 
 type FitItem = {
@@ -307,6 +315,7 @@ export default function Home() {
   }
 
   const c = result?.classification;
+  const prov = cases.find((p) => p.id === caseId)?.provenance;
 
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-8">
@@ -347,6 +356,39 @@ export default function Home() {
             spellCheck={false}
             className="w-full h-44 text-xs font-mono bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-3"
           />
+
+          {prov && (
+            <div className="rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 text-xs space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                  ✓ Real molecular data · de-identified
+                </span>
+                <a
+                  href={prov.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-emerald-700 dark:text-emerald-400 hover:underline font-mono"
+                >
+                  {prov.sample_id} ↗
+                </a>
+              </div>
+              <p className="text-neutral-500">
+                Source: cBioPortal <span className="font-mono">{prov.study}</span> — {prov.study_name}{" "}
+                (PMID {prov.pmid}). Molecular markers below are traceable to this real TCGA sample;
+                the clinical course is a labeled constructed layer.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(prov.markers).map(([k, v]) => (
+                  <span
+                    key={k}
+                    className="rounded border border-emerald-300/60 dark:border-emerald-800/60 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:text-neutral-300"
+                  >
+                    <span className="text-neutral-400">{k.replace(/_/g, " ").toLowerCase()}:</span> {v}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {c && (
             <div className="rounded-xl border border-violet-300 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30 p-4 space-y-3">

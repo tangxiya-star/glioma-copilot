@@ -102,7 +102,8 @@ def patients():
     caches the full set and case-switching is instant (no per-switch fetch).
     """
     return {"patients": [
-        {"id": p["id"], "label": p["label"], "report": p["report"]}
+        {"id": p["id"], "label": p["label"], "report": p["report"],
+         "provenance": p.get("provenance")}
         for p in SYNTHETIC_PATIENTS
     ]}
 
