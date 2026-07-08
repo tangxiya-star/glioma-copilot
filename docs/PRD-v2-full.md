@@ -479,11 +479,15 @@ bevacizumab → bevacizumab  (RxCUI 253337, CHEMBL1201583) · "Vascular endothel
               factor A inhibitor"   ← Tier-2 mechanism; grounds "prior anti-VEGF therapy"
 ```
 
-> The ChEMBL mechanism (e.g. bevacizumab = VEGF-A inhibitor) is what makes authoritative
-> drug-class matching possible for eligibility phrased as "prior anti-VEGF therapy" rather
-> than a specific drug name. (Feeding mechanism into the Stage-1 pre-screen is a natural
-> next step; today the screen keyword-matches bevacizumab/anti-VEGF and the fit layer
-> reasons over the rest.)
+> The ChEMBL mechanism (e.g. bevacizumab = VEGF-A inhibitor) makes authoritative
+> **drug-class** matching possible. **This is now wired into the Stage-1 pre-screen**
+> (`prescreen.drug_signals` + `screen_trial`): the patient's real prior therapies are
+> normalized, and a trial whose exclusion names only a drug *class* (e.g. "prior
+> anti-VEGF therapy") — not the drug — is flagged via the ChEMBL mechanism, which a
+> name-only filter would miss. Verified: for Case 004 (real prior bevacizumab), this
+> catches **4** real recruiting GBM trials (e.g. NCT06672575, NCT05500612) that exclude
+> "anti-VEGF / anti-angiogenic" without naming bevacizumab; the UI shows a "ChEMBL
+> mechanism-matched N trials…" callout with the grounded reason on each.
 
 ---
 

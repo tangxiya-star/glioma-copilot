@@ -167,6 +167,10 @@ export default function Home() {
     flagged: number;
     deepAssessed: number;
   } | null>(null);
+  // ChEMBL-mechanism screen wins: trials excluding a drug CLASS a name filter would miss.
+  const [mech, setMech] = useState<{ count: number; examples: { nct_id: string; reason: string }[] }>(
+    { count: 0, examples: [] }
+  );
   const TRIAGE_N = 4;
 
   const [review, setReview] = useState<Review | null>(null);
@@ -235,6 +239,7 @@ export default function Home() {
       setTriage({});
       setTrials(null);
       setPool(null);
+      setMech({ count: 0, examples: [] });
       // The triage stream is now the single source of the trial list: it pulls
       // the FULL recruiting pool (Stage 0), screens all of it (Stage 1), and
       // deep-fits the top clear candidates (Stage 2).
@@ -304,6 +309,7 @@ export default function Home() {
               flagged: msg.flagged,
               deepAssessed: 0,
             }));
+            setMech({ count: msg.mechanism_matched ?? 0, examples: msg.mechanism_examples ?? [] });
           } else if (msg.type === "triage" && msg.trial && msg.items) {
             setTriage((prev) => ({
               ...prev,
@@ -801,6 +807,24 @@ export default function Home() {
                   Pulling every recruiting trial + screening…
                 </p>
               )}
+
+              {mech.count > 0 && (
+                <div className="rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/20 p-3 text-xs space-y-1">
+                  <p className="font-medium text-teal-700 dark:text-teal-300">
+                    🔬 ChEMBL mechanism-matched {mech.count} trial{mech.count > 1 ? "s" : ""} that
+                    exclude a drug <em>class</em> without naming the drug — a name-only filter would
+                    miss {mech.count > 1 ? "these" : "this"}.
+                  </p>
+                  <ul className="space-y-0.5 text-teal-700/80 dark:text-teal-400/80">
+                    {mech.examples.map((e) => (
+                      <li key={e.nct_id}>
+                        <span className="font-mono">{e.nct_id}</span> — {e.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <ul className="space-y-2 max-h-[30rem] overflow-auto">
                 {sortByTriage(trials, triage).map((t) => {
                   const tri = triage[t.nct_id];

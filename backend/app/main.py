@@ -32,7 +32,7 @@ from .db import (
 )
 from .drugs import normalize_drug
 from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient
-from .prescreen import patient_screen_facts, screen_trial
+from .prescreen import drug_signals, patient_screen_facts, screen_trial
 from .trials import fetch_all_recruiting, fetch_glioma_trials, fetch_trial
 
 app = FastAPI(title="Glioma Copilot API", version="0.1.0")
@@ -474,6 +474,11 @@ def triage_stream(req: TriageRequest):
     patient = get_patient(req.patient_id)
     n = max(1, min(req.limit, 5))  # cap 1..5 deep fits to bound Claude calls (~15s each)
     facts = patient_screen_facts(patient)
+    # Ground the patient's REAL prior therapies (GDC) in RxNorm+ChEMBL, so the screen
+    # can match a trial that excludes a drug CLASS (e.g. 'anti-VEGF'), not just a name.
+    prior_agents = ((patient.get("provenance") or {}).get("treatment") or {}).get("agents", [])
+    prior_drugs = [_normalize_cached(a) for a in prior_agents if "radiation" not in a.lower()]
+    drug_sigs = drug_signals(prior_drugs)
     try:
         pool = fetch_all_recruiting(condition=req.condition or "glioma")
     except Exception as e:
@@ -487,15 +492,22 @@ def triage_stream(req: TriageRequest):
         # Stage 1: deterministic screen over the WHOLE pool (fast, no Claude).
         screened = []
         for t in pool:
-            sc = screen_trial(facts, t.get("eligibility") or "")
+            sc = screen_trial(facts, t.get("eligibility") or "", drug_sigs)
             screened.append((t, sc))
         clear = [t for t, sc in screened if sc["status"] == "clear"]
         flagged_n = len(screened) - len(clear)
+        # The ChEMBL win: trials excluding a drug CLASS a name-only filter would miss.
+        mech_hits = [(t, sc) for t, sc in screened if sc.get("via_mechanism")]
         yield json.dumps({
             "type": "screen",
             "facts": facts,
             "clear": len(clear),
             "flagged": flagged_n,
+            "mechanism_matched": len(mech_hits),
+            "mechanism_examples": [
+                {"nct_id": t["nct_id"], "reason": sc["reasons"][-1]}
+                for t, sc in mech_hits[:4]
+            ],
             "trials": [
                 {"nct_id": t["nct_id"], "title": t["title"], "url": t["url"],
                  "locations": t["locations"], "phases": t.get("phases", []),
