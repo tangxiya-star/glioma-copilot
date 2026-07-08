@@ -539,32 +539,70 @@ Mock patient case
 
 ---
 
-## 12.5 Patient Case Data
+## 12.5 Patient record — features, data sources & assembly
 
-For demo, use either:
+Each demo patient is a **real, de-identified TCGA case** whose record is assembled from
+public sources, plus a small, clearly-labeled **constructed clinical layer** for the
+trial-relevant fields that de-identified public data does not carry. This section lists
+every feature the copilot uses, where it comes from, and whether it is real or constructed
+— so a reviewer can see exactly what is grounded and what is illustrative.
 
-```text
-Option A: Synthetic mock GBM patient
-Option B: Public de-identified GBM dataset
-Option C: Manually created case based on public trial eligibility patterns
+**Why these features:** the "Appears in trial eligibility" column is measured empirically —
+the share of the **326 recruiting glioblastoma trials** on ClinicalTrials.gov whose
+eligibility text references that field. That is what makes a field worth modeling: it lets
+the per-criterion fit engine resolve that criterion from *unknown* → *met / not-met*.
+
+| Feature | Category | Appears in trial eligibility¹ | Value for fit | Data source | Real / constructed |
+|---|---|---|---|---|---|
+| Age | clinical | 83% | high | cBioPortal (patient) | **REAL** |
+| Sex | clinical | rarely a gate | low | cBioPortal (patient) | **REAL** |
+| Performance status (KPS) | clinical | 78% | very high | cBioPortal (`KARNOFSKY_PERFORMANCE_SCORE`) | **REAL** |
+| Prior therapy (drug names) | clinical | common (prior-tx exclusions) | high | NIH GDC (`diagnoses.treatments.therapeutic_agents`) | **REAL** |
+| → canonical drug identity + mechanism/class | derived | — | high | RxNorm (RxNav) + ChEMBL | **REAL** (derived) |
+| Primary diagnosis | clinical | context | context | NIH GDC | **REAL** |
+| Tumor site (coarse) | clinical | 25% (location) | medium | NIH GDC (`site_of_resection_or_biopsy`, coarse "Brain, NOS") | **REAL** (coarse) |
+| IDH status | molecular | via diagnosis + fit | high | cBioPortal (`lgggbm_tcga_pub`) | **REAL** |
+| 1p/19q codeletion | molecular | via diagnosis + fit | high | cBioPortal | **REAL** |
+| MGMT promoter methylation | molecular | common | high | cBioPortal | **REAL** |
+| ATRX status | molecular | — | medium | cBioPortal | **REAL** |
+| TERT promoter | molecular | — | medium | cBioPortal | **REAL** |
+| WHO grade | molecular / path | — | high | cBioPortal | **REAL** |
+| Histology | path | — | high | cBioPortal + GDC | **REAL** |
+| Variant calls (IDH1 R132H, TP53, EGFR, ATRX…) | molecular | — | medium | cBioPortal (mutations API) | **REAL** |
+| Disease status (recurrent / newly-dx) | clinical | 64% | very high | *not in public data (all TCGA samples are "primary")* | *constructed* ² |
+| Resection extent / residual | clinical | 52% | high | *not in public data (GDC `residual_disease` empty)* | *constructed* ² |
+| Steroid / dexamethasone dose | clinical | 40% | medium | *not in public data* | *constructed* ² |
+| Tumor location (supratentorial / brainstem) | clinical | 25% | medium | *GDC only coarse "Brain, NOS"* | *constructed* ² |
+| Measurable disease | clinical | 23% | medium | *imaging — not in these sources* | *constructed* ² |
+| EGFR amplification (Case-001 gate) | molecular | — | demo (verify-catch) | *"not yet tested"* | *constructed* ² |
+| Laterality (left / right) | — | **0%** | none | — | *not modeled* |
+| Symptoms / seizure | clinical | 11–30% (mostly incidental) | low | — | *not modeled* |
+
+¹ Share of 326 recruiting glioblastoma trials (ClinicalTrials.gov) whose eligibility text references the field.
+² **Clearly labeled** "illustrative — NOT from TCGA" in every report and marked with `*` (italic) in the patient-panel table. Molecular / treatment / KPS stay real; only these narrative fields are authored, because no public de-identified source carries them.
+
+### How the record is assembled
+
+```
+cBioPortal  (study lgggbm_tcga_pub, by sample barcode)
+    → molecular markers + variant calls + age / sex / KPS               [REAL]
+NIH GDC  (by TCGA case id)
+    → prior treatment (agents) + tumor site + primary diagnosis         [REAL]
+RxNorm (RxNav) + ChEMBL  (by drug name)
+    → canonical drug identity (RxCUI/ingredient) + mechanism / class    [REAL, derived]
+Constructed clinical layer  (authored, labeled "illustrative — not from TCGA")
+    → disease status · resection extent · steroid dose · tumor location
+      · measurable disease · Case-001 EGFR-pending gate                 [CONSTRUCTED]
+            │
+            ▼   merged into ONE integrated neuropathology report
+Deterministic WHO CNS5 classifier  +  per-criterion Trial Fit (Claude)
+    read the merged report; the UI shows provenance links
+    (cBioPortal sample ↗, NIH GDC case ↗, RxCUI ↗, ChEMBL ↗).
 ```
 
-For a hackathon, the safest MVP is a **synthetic mock patient** to avoid privacy issues.
-
-### Fields needed
-
-```text
-Age
-Diagnosis
-Disease state: newly diagnosed / recurrent
-Location
-Prior treatments
-Molecular markers
-Performance status
-Travel preference
-Caregiver support
-Treatment goals
-```
+All four demo patients are TCGA cases **recorded alive**; survival / vital status is never
+fetched or shown (red line + respect). A reviewer can also drop in *any* real TCGA glioma
+barcode via "Load live case" and the same assembly runs at request time.
 
 ---
 
