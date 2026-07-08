@@ -808,12 +808,14 @@ export default function Home() {
                   const flagged = t.screen?.status === "flagged";
                   return (
                     <li key={t.nct_id}>
-                      <button
+                      <div
                         onClick={() => openTrial(t)}
-                        className={`w-full text-left border rounded-md px-3 py-2 hover:border-indigo-400 ${
+                        role="button"
+                        tabIndex={0}
+                        className={`cursor-pointer border rounded-xl px-3 py-2 hover:border-indigo-400 ${
                           fitNct === t.nct_id
                             ? "border-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/30"
-                            : "border-neutral-200 dark:border-neutral-800"
+                            : "border-slate-200 dark:border-neutral-800"
                         } ${flagged ? "opacity-60" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -848,11 +850,19 @@ export default function Home() {
                             ))}
                           </span>
                         ) : null}
-                        <span className="block text-xs text-neutral-400 mt-1">
-                          {t.nct_id}
+                        <span className="block text-xs text-slate-400 mt-1">
+                          <a
+                            href={t.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-medium text-indigo-500 hover:underline"
+                          >
+                            {t.nct_id} ↗
+                          </a>
                           {t.locations.length > 0 && <> · {t.locations.slice(0, 2).join(" · ")}</>}
                         </span>
-                      </button>
+                      </div>
                     </li>
                   );
                 })}
