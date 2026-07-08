@@ -620,6 +620,8 @@ cases **recorded alive**; survival / vital status is never fetched or shown (red
 A reviewer can also drop in *any* real TCGA glioma barcode via "Load live case" and the same
 assembly runs at request time.
 
+> **The exact data behind all 8 demo patients** — every field, its source, and real-vs-constructed — is tabulated in **`docs/patient-data.md`** (generated from `/api/patients`), so it can be inspected without running the app.
+
 ### 12.5.1 Field coverage — validated against a real registry's structure
 
 To make sure the record reflects what clinicians actually track, the feature set was
