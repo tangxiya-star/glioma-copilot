@@ -26,7 +26,14 @@ type Provenance = {
   markers: Record<string, string>;
 };
 type Patient = { id: string; label: string; report: string; provenance?: Provenance | null };
-type Trial = { nct_id: string; title: string; locations: string[]; url: string };
+type Screen = { status: "clear" | "flagged"; reasons: string[] };
+type Trial = {
+  nct_id: string;
+  title: string;
+  locations: string[];
+  url: string;
+  screen?: Screen;
+};
 
 type FitItem = {
   criterion: string;
@@ -98,6 +105,13 @@ export default function Home() {
   // Proactive fit triage: nct_id -> badge summary + cached full items.
   const [triage, setTriage] = useState<Record<string, Triage>>({});
   const [triaging, setTriaging] = useState(false);
+  // Stage 0/1 pool stats: full recruiting count, screen-clear/flagged, deep-assessed.
+  const [pool, setPool] = useState<{
+    total: number;
+    clear: number;
+    flagged: number;
+    deepAssessed: number;
+  } | null>(null);
   const TRIAGE_N = 4;
 
   const [review, setReview] = useState<Review | null>(null);
@@ -126,6 +140,7 @@ export default function Home() {
     setFitNct("");
     setReview(null);
     setTriage({});
+    setPool(null);
     setMatchedCondition("");
     setReport(list.find((p) => p.id === id)?.report ?? "");
   }
@@ -147,18 +162,18 @@ export default function Home() {
       setFit(null);
       setFitNct("");
       setTriage({});
-      const tr = await fetch(`${API_URL}/api/trials?limit=20&condition=${encodeURIComponent(cond)}`);
-      setTrials((await tr.json()).trials);
-      // Proactively triage the top candidates so the clinician sees fit at a
-      // glance instead of clicking each trial. Fires right after Analyze.
+      setTrials(null);
+      setPool(null);
+      // The triage stream is now the single source of the trial list: it pulls
+      // the FULL recruiting pool (Stage 0), screens all of it (Stage 1), and
+      // deep-fits the top clear candidates (Stage 2).
       runTriage(cond);
     } finally {
       setLoading(false);
     }
   }
 
-  // Run the real per-criterion fit across the top N candidates, streaming a
-  // badge per trial as it lands. Caches full items for instant drill-down.
+  // Stage 0/1/2 candidate triage stream: pool → screen (full list) → deep-fit.
   async function runTriage(cond: string) {
     setTriaging(true);
     setTriage({});
@@ -187,7 +202,18 @@ export default function Home() {
           } catch {
             continue;
           }
-          if (msg.type === "triage" && msg.trial && msg.items) {
+          if (msg.type === "pool") {
+            setPool({ total: msg.total, clear: 0, flagged: 0, deepAssessed: 0 });
+          } else if (msg.type === "screen") {
+            // Full screened pool becomes the trial list (all listed, none hidden).
+            setTrials(msg.trials as Trial[]);
+            setPool((p) => ({
+              total: p?.total ?? msg.trials.length,
+              clear: msg.clear,
+              flagged: msg.flagged,
+              deepAssessed: 0,
+            }));
+          } else if (msg.type === "triage" && msg.trial && msg.items) {
             setTriage((prev) => ({
               ...prev,
               [msg.trial.nct_id]: {
@@ -196,6 +222,8 @@ export default function Home() {
                 signal: msg.signal,
               },
             }));
+          } else if (msg.type === "done") {
+            setPool((p) => (p ? { ...p, deepAssessed: msg.deep_assessed } : p));
           }
         }
       }
@@ -441,9 +469,10 @@ export default function Home() {
               <span className="font-medium text-neutral-600 dark:text-neutral-300">
                 ① Run <span className="text-violet-600">Analyze</span> first.
               </span>{" "}
-              It classifies this patient (WHO CNS5) and matches recruiting trials to the tumor
-              type, then auto-triages the top {TRIAGE_N} for fit. Trials are matched for clinician
-              review — not a general trial search.
+              It classifies this patient (WHO CNS5), pulls <em>every</em> recruiting trial for the
+              tumor type, screens all of them for hard conflicts, then runs the real per-criterion
+              fit on the top screen-clear candidates. For clinician review — not a general trial
+              search.
             </div>
           )}
           {loading && (
@@ -452,56 +481,84 @@ export default function Home() {
 
           {result && (
             <>
-              <p className="text-xs text-neutral-400">
-                {Object.keys(triage).length > 0 || triaging ? (
-                  <>
-                    Top {TRIAGE_N} candidates auto-triaged for fit
-                    {triaging && <span className="text-violet-500"> · assessing…</span>} — click any
-                    trial for the full per-criterion table.
-                  </>
-                ) : (
-                  "Click a trial to assess per-criterion fit."
-                )}
-              </p>
+              {pool ? (
+                <div className="text-xs text-neutral-500 space-y-0.5">
+                  <p>
+                    <span className="font-medium text-neutral-700 dark:text-neutral-200">
+                      {pool.total}
+                    </span>{" "}
+                    recruiting trials pulled (every one — not a top-N slice)
+                    {triaging && <span className="text-violet-500"> · working…</span>}
+                  </p>
+                  <p>
+                    <span className="text-emerald-600">{pool.clear} screen-clear</span> ·{" "}
+                    <span className="text-amber-600">{pool.flagged} flagged</span> (hard conflict,
+                    deprioritized — not hidden) ·{" "}
+                    <span className="text-violet-600">
+                      deep-assessed {pool.deepAssessed || (triaging ? "…" : 0)} of {pool.total}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-violet-500 animate-pulse">
+                  Pulling every recruiting trial + screening…
+                </p>
+              )}
               <ul className="space-y-2 max-h-[30rem] overflow-auto">
                 {sortByTriage(trials, triage).map((t) => {
-              const tri = triage[t.nct_id];
-              const sig = tri ? SIGNAL[tri.signal] ?? SIGNAL.no_criteria : null;
-              return (
-                <li key={t.nct_id}>
-                  <button
-                    onClick={() => openTrial(t)}
-                    className={`w-full text-left border rounded-md px-3 py-2 hover:border-violet-400 ${
-                      fitNct === t.nct_id
-                        ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
-                        : "border-neutral-200 dark:border-neutral-800"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-medium">{t.title}</span>
-                      {sig && (
-                        <span
-                          className={`shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap ${sig.cls}`}
-                        >
-                          {sig.icon} {sig.label}
+                  const tri = triage[t.nct_id];
+                  const sig = tri ? SIGNAL[tri.signal] ?? SIGNAL.no_criteria : null;
+                  const flagged = t.screen?.status === "flagged";
+                  return (
+                    <li key={t.nct_id}>
+                      <button
+                        onClick={() => openTrial(t)}
+                        className={`w-full text-left border rounded-md px-3 py-2 hover:border-violet-400 ${
+                          fitNct === t.nct_id
+                            ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
+                            : "border-neutral-200 dark:border-neutral-800"
+                        } ${flagged ? "opacity-60" : ""}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-medium">{t.title}</span>
+                          {sig ? (
+                            <span
+                              className={`shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap ${sig.cls}`}
+                            >
+                              {sig.icon} {sig.label}
+                            </span>
+                          ) : (
+                            flagged && (
+                              <span className="shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap text-amber-600">
+                                ⚠ screened out
+                              </span>
+                            )
+                          )}
+                        </div>
+                        {tri && tri.signal !== "no_criteria" && (
+                          <span className="block text-xs mt-1 space-x-2">
+                            <span className="text-emerald-600">✅ {tri.summary.met}</span>
+                            <span className="text-amber-600">❓ {tri.summary.unknown}</span>
+                            <span className="text-red-600">❌ {tri.summary.not_met}</span>
+                          </span>
+                        )}
+                        {flagged && t.screen?.reasons?.length ? (
+                          <span className="block text-[11px] text-amber-600 mt-1">
+                            {t.screen.reasons.map((rsn, i) => (
+                              <span key={i} className="block">
+                                ⚠ {rsn}
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
+                        <span className="block text-xs text-neutral-400 mt-1">
+                          {t.nct_id}
+                          {t.locations.length > 0 && <> · {t.locations.slice(0, 2).join(" · ")}</>}
                         </span>
-                      )}
-                    </div>
-                    {tri && tri.signal !== "no_criteria" && (
-                      <span className="block text-xs mt-1 space-x-2">
-                        <span className="text-emerald-600">✅ {tri.summary.met}</span>
-                        <span className="text-amber-600">❓ {tri.summary.unknown}</span>
-                        <span className="text-red-600">❌ {tri.summary.not_met}</span>
-                      </span>
-                    )}
-                    <span className="block text-xs text-neutral-400 mt-1">
-                      {t.nct_id}
-                      {t.locations.length > 0 && <> · {t.locations.slice(0, 2).join(" · ")}</>}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </>
           )}
@@ -681,14 +738,17 @@ function sortByTriage(
   triage: Record<string, Triage>
 ): Trial[] {
   if (!trials) return [];
+  // Screen-flagged trials sink to the bottom (deprioritized, still listed);
+  // among the rest, deep-fitted (triaged) trials rank by fit, then un-triaged.
   const rankOf = (t: Trial) => {
+    const flagged = t.screen?.status === "flagged" ? 1 : 0;
     const tri = triage[t.nct_id];
-    if (!tri) return { r: 9, u: 0 }; // un-triaged: keep after triaged
-    return { r: SIGNAL[tri.signal]?.rank ?? 3, u: tri.summary.unknown };
+    if (!tri) return { f: flagged, r: 9, u: 0 }; // un-triaged: after triaged
+    return { f: flagged, r: SIGNAL[tri.signal]?.rank ?? 3, u: tri.summary.unknown };
   };
   return trials
     .map((t, i) => ({ t, i, ...rankOf(t) }))
-    .sort((a, b) => a.r - b.r || a.u - b.u || a.i - b.i)
+    .sort((a, b) => a.f - b.f || a.r - b.r || a.u - b.u || a.i - b.i)
     .map((x) => x.t);
 }
 

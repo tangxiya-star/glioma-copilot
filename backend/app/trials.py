@@ -65,6 +65,35 @@ def fetch_trial(nct_id: str) -> dict[str, Any] | None:
     return _flatten(resp.json())
 
 
+def fetch_all_recruiting(condition: str = "glioma", max_trials: int = 1000) -> list[dict[str, Any]]:
+    """Exhaustively pull EVERY recruiting trial for a condition (paginated).
+
+    Stage 0 of candidate triage: the pool is finite and bounded, so we take ALL
+    of it — no top-N slice. This guarantees a genuinely relevant trial buried in
+    ClinicalTrials.gov's default sort is still in the pool (never silently
+    missed); ranking is left to the transparent downstream screen + fit.
+    """
+    out: list[dict[str, Any]] = []
+    page_token: str | None = None
+    for _ in range(10):  # safety cap: 10 * 1000 = 10k, far above any glioma cond
+        params = {
+            "query.cond": condition or "glioma",
+            "filter.overallStatus": "RECRUITING",
+            "pageSize": 1000,
+            "fields": ",".join(_FIELDS),
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        resp = requests.get(CTGOV_URL, params=params, timeout=45)
+        resp.raise_for_status()
+        data = resp.json()
+        out.extend(_flatten(s) for s in data.get("studies", []))
+        page_token = data.get("nextPageToken")
+        if not page_token or len(out) >= max_trials:
+            break
+    return out[:max_trials]
+
+
 def fetch_glioma_trials(page_size: int = 20, condition: str = "glioma") -> list[dict[str, Any]]:
     """Pull recruiting trials for a condition, flattened.
 

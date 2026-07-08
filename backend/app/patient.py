@@ -96,6 +96,7 @@ CASE_001 = {
     "id": "case-001",
     "label": "Case 001 — 54yo M, glioblastoma IDH-wildtype (TCGA-02-0033)",
     "provenance": _PROV_001,
+    "clinical": {"recurrent": True, "prior_bevacizumab": False},
     "report": _report(
         _PROV_001,
         specimen="Right frontal brain tumor, craniotomy with resection.",
@@ -144,6 +145,7 @@ CASE_002 = {
     "id": "case-002",
     "label": "Case 002 — 43yo M, astrocytoma IDH-mutant grade 4 (TCGA-02-2483)",
     "provenance": _PROV_002,
+    "clinical": {"recurrent": False, "prior_bevacizumab": False},
     "report": _report(
         _PROV_002,
         specimen="Left temporal brain tumor, craniotomy with resection.",
@@ -192,6 +194,7 @@ CASE_003 = {
     "id": "case-003",
     "label": "Case 003 — 53yo F, oligodendroglioma IDH-mut 1p/19q-codel (TCGA-CS-5396)",
     "provenance": _PROV_003,
+    "clinical": {"recurrent": False, "prior_bevacizumab": False},
     "report": _report(
         _PROV_003,
         specimen="Right frontal brain tumor, craniotomy with resection.",
@@ -239,6 +242,7 @@ CASE_004 = {
     "id": "case-004",
     "label": "Case 004 — 50yo M, recurrent glioblastoma IDH-wt · prior bevacizumab (TCGA-02-0003)",
     "provenance": _PROV_004,
+    "clinical": {"recurrent": True, "prior_bevacizumab": True},
     "report": _report(
         _PROV_004,
         specimen="Left parietal brain tumor, craniotomy with resection.",

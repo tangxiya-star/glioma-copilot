@@ -29,7 +29,8 @@ from .db import (
     upsert_trials,
 )
 from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient
-from .trials import fetch_glioma_trials, fetch_trial
+from .prescreen import patient_screen_facts, screen_trial
+from .trials import fetch_all_recruiting, fetch_glioma_trials, fetch_trial
 
 app = FastAPI(title="Glioma Copilot API", version="0.1.0")
 
@@ -448,47 +449,67 @@ def _triage_signal(summary: dict) -> str:
 class TriageRequest(BaseModel):
     patient_id: str | None = None
     condition: str = "glioma"
-    limit: int = 4  # candidates to triage; capped below to bound cost/latency
+    limit: int = 4  # trials to DEEP-fit (Stage 2); capped below to bound cost/latency
 
 
 @app.post("/api/triage/stream")
 def triage_stream(req: TriageRequest):
-    """Run the REAL per-criterion fit across the top N candidate trials, streamed.
+    """Exhaustive candidate triage, streamed. Three transparent stages:
 
-    This is fit triage FOR CLINICIAN REVIEW, not discovery/recommendation — the
-    candidate set still comes from condition scoping (the patient's tumor type).
-    Emits one message per trial as its fit lands, with a badge summary + the full
-    items (cached client-side so drill-down + 3-agent review reuse them).
+    Stage 0 — pull EVERY recruiting trial for the tumor type (no top-N slice), so
+              a relevant trial buried in the default sort is never silently missed.
+    Stage 1 — a cheap, deterministic, recall-preserving pre-screen flags HARD
+              conflicts with the patient's known facts (only deprioritizes, never
+              hides; every flag carries a reason).
+    Stage 2 — the REAL per-criterion fit (Claude) on the top `limit` screen-clear
+              trials, streamed with badges. Everything else stays listed &
+              openable; we report "deep-assessed N of <total>" (no silent cap).
+
+    This stays inside the "not a trial finder" line: candidate scoping is the
+    tumor type, ranking is transparent (screen + cited fit), the clinician decides.
     """
     patient = get_patient(req.patient_id)
-    n = max(1, min(req.limit, 5))  # cap 1..5 to bound Claude calls (~15s each)
+    n = max(1, min(req.limit, 5))  # cap 1..5 deep fits to bound Claude calls (~15s each)
+    facts = patient_screen_facts(patient)
     try:
-        candidates = fetch_glioma_trials(page_size=n, condition=req.condition or "glioma")
+        pool = fetch_all_recruiting(condition=req.condition or "glioma")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"ClinicalTrials.gov error: {e}")
 
     def gen():
-        metas = [
-            {"nct_id": t["nct_id"], "title": t["title"],
-             "url": t["url"], "locations": t["locations"]}
-            for t in candidates
-        ]
-        yield json.dumps({"type": "start", "condition": req.condition,
-                          "count": len(candidates), "trials": metas}) + "\n"
+        # Stage 0: announce the full bounded pool.
+        yield json.dumps({"type": "pool", "condition": req.condition,
+                          "total": len(pool)}) + "\n"
+
+        # Stage 1: deterministic screen over the WHOLE pool (fast, no Claude).
+        screened = []
+        for t in pool:
+            sc = screen_trial(facts, t.get("eligibility") or "")
+            screened.append((t, sc))
+        clear = [t for t, sc in screened if sc["status"] == "clear"]
+        flagged_n = len(screened) - len(clear)
+        yield json.dumps({
+            "type": "screen",
+            "facts": facts,
+            "clear": len(clear),
+            "flagged": flagged_n,
+            "trials": [
+                {"nct_id": t["nct_id"], "title": t["title"], "url": t["url"],
+                 "locations": t["locations"], "screen": sc}
+                for t, sc in screened
+            ],
+        }) + "\n"
 
         try:
             upsert_patient(patient)
         except Exception as e:
             print(f"[triage] patient store skipped: {e}")
 
-        for t in candidates:
+        # Stage 2: deep per-criterion fit on the top N screen-CLEAR trials.
+        deep = [t for t in clear if t.get("eligibility")][:n]
+        for t in deep:
             meta = {"nct_id": t["nct_id"], "title": t["title"],
                     "url": t["url"], "locations": t["locations"]}
-            if not t.get("eligibility"):
-                yield json.dumps({"type": "triage", "trial": meta, "items": [],
-                                  "summary": {"met": 0, "not_met": 0, "unknown": 0},
-                                  "signal": "no_criteria"}) + "\n"
-                continue
             try:
                 items = _compute_fit_items(patient, t)
             except Exception as e:
@@ -504,7 +525,8 @@ def triage_stream(req: TriageRequest):
                               "summary": summary,
                               "signal": _triage_signal(summary)}) + "\n"
 
-        yield json.dumps({"type": "done"}) + "\n"
+        yield json.dumps({"type": "done", "deep_assessed": len(deep),
+                          "total": len(pool)}) + "\n"
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
 
