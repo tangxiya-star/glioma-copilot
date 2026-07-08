@@ -76,10 +76,36 @@ def _gdc_case(case_id: str) -> dict[str, Any]:
                     "primary_diagnosis": dg.get("primary_diagnosis"),
                     "site": dg.get("site_of_resection_or_biopsy") or dg.get("tissue_or_organ_of_origin"),
                     "prior_malignancy": dg.get("prior_malignancy"),
+                    "classification_of_tumor": dg.get("classification_of_tumor"),
+                    "method_of_diagnosis": dg.get("method_of_diagnosis"),
                 }
         return {"agents": sorted(set(agents)), "uuid": h.get("case_id"), **dx}
     except Exception:
         return {"agents": [], "uuid": None}
+
+
+def _status_from(classification: str | None) -> str | None:
+    """GDC classification_of_tumor → disease status (REAL)."""
+    if not classification:
+        return None
+    c = classification.lower()
+    if "primary" in c:
+        return "Newly diagnosed"
+    if any(k in c for k in ("recurr", "progress", "relapse", "metasta")):
+        return "Recurrent"
+    return classification
+
+
+def _resection_from(method: str | None) -> str | None:
+    """GDC method_of_diagnosis → resection type (REAL)."""
+    if not method:
+        return None
+    m = method.lower()
+    if "resection" in m:
+        return "Surgical resection"
+    if "biopsy" in m:
+        return "Biopsy"
+    return method
 
 
 def _normalize_barcode(barcode: str) -> tuple[str, str]:
@@ -130,6 +156,9 @@ def build_case_from_tcga(barcode: str) -> dict[str, Any]:
             "primary_diagnosis": gdc.get("primary_diagnosis"),
             "site": gdc.get("site"),
             "performance_kps": (pat.get("KARNOFSKY_PERFORMANCE_SCORE") or "").split(".")[0] or None,
+            # REAL disease status + resection type from GDC (not constructed).
+            "status": _status_from(gdc.get("classification_of_tumor")),
+            "resection": _resection_from(gdc.get("method_of_diagnosis")),
         },
     }
 

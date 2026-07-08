@@ -85,6 +85,8 @@ PATIENT / SPECIMEN
 
 CLINICAL  [REAL — cBioPortal + GDC]
 - Primary diagnosis: {cl.get('primary_diagnosis', '—')}
+- Disease status: {cl.get('status', '—')}
+- Resection: {cl.get('resection', '—')}
 - Tumor site: {cl.get('site', '—')}
 - Performance status: KPS {cl.get('performance_kps', '—')}
 {constructed_block}
@@ -119,10 +121,9 @@ _PROV_001 = _provenance(
      "AGE": "64", "SEX": "Male",
      "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"},
     clinical={"primary_diagnosis": "Glioblastoma", "site": "Brain, NOS", "performance_kps": "40",
-              "status": "Recurrent (first recurrence)", "resection": "Subtotal resection",
+              "status": "Newly diagnosed", "resection": "Surgical resection",
               "steroid": "Dexamethasone 4 mg/day", "location": "Right frontal, supratentorial",
-              "measurable": "Measurable enhancing disease",
-              "_constructed": ["status", "resection", "steroid", "location", "measurable"]})
+              "_constructed": ["steroid", "location"]})
 CASE_001 = {
     "id": "case-001",
     "label": "Case 001 — 64yo M, glioblastoma IDH-wildtype (TCGA-06-6695)",
@@ -174,10 +175,9 @@ _PROV_002 = _provenance(
      "AGE": "43", "SEX": "Male",
      "mutations": "IDH1 R132H, ATRX W2001Cfs*14, TP53 R273H"},
     clinical={"primary_diagnosis": "Glioblastoma", "site": "Brain, NOS", "performance_kps": "80",
-              "status": "Newly diagnosed", "resection": "Gross total resection",
+              "status": "Newly diagnosed", "resection": "Biopsy",
               "steroid": "None", "location": "Left temporal, supratentorial",
-              "measurable": "Minimal residual post-op",
-              "_constructed": ["status", "resection", "steroid", "location", "measurable"]})
+              "_constructed": ["steroid", "location"]})
 CASE_002 = {
     "id": "case-002",
     "label": "Case 002 — 43yo M, astrocytoma IDH-mutant grade 4 (TCGA-02-2483)",
@@ -227,10 +227,9 @@ _PROV_003 = _provenance(
      "HISTOLOGICAL_DIAGNOSIS": "oligodendroglioma",
      "AGE": "53", "SEX": "Female", "mutations": "IDH1 R132H, TP53 R273H"},
     clinical={"primary_diagnosis": "Oligodendroglioma, anaplastic", "site": "Nervous system, NOS",
-              "performance_kps": "90", "status": "Newly diagnosed", "resection": "Gross total resection",
+              "performance_kps": "90", "status": "Newly diagnosed",
               "steroid": "None", "location": "Right frontal, supratentorial",
-              "measurable": "Minimal residual",
-              "_constructed": ["status", "resection", "steroid", "location", "measurable"]})
+              "_constructed": ["steroid", "location"]})
 CASE_003 = {
     "id": "case-003",
     "label": "Case 003 — 53yo F, oligodendroglioma IDH-mut 1p/19q-codel (TCGA-CS-5396)",
@@ -281,10 +280,9 @@ _PROV_004 = _provenance(
      "AGE": "67", "SEX": "Male",
      "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"},
     clinical={"primary_diagnosis": "Glioblastoma", "site": "Brain, NOS", "performance_kps": "60",
-              "status": "Recurrent (progression on bevacizumab)", "resection": "Subtotal resection",
+              "status": "Newly diagnosed", "resection": "Surgical resection",
               "steroid": "Dexamethasone 2 mg/day", "location": "Left parietal, supratentorial",
-              "measurable": "Measurable enhancing disease",
-              "_constructed": ["status", "resection", "steroid", "location", "measurable"]})
+              "_constructed": ["steroid", "location"]})
 CASE_004 = {
     "id": "case-004",
     "label": "Case 004 — 67yo M, glioblastoma IDH-wt · prior bevacizumab (TCGA-06-5413)",

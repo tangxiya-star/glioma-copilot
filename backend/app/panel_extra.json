@@ -31,7 +31,9 @@
    "clinical": {
     "primary_diagnosis": "Glioblastoma",
     "site": "Brain, NOS",
-    "performance_kps": "100"
+    "performance_kps": "100",
+    "status": "Newly diagnosed",
+    "resection": "Surgical resection"
    }
   },
   "clinical": {
@@ -75,7 +77,9 @@
    "clinical": {
     "primary_diagnosis": "Glioblastoma",
     "site": "Not Reported",
-    "performance_kps": "80"
+    "performance_kps": "80",
+    "status": "Recurrent",
+    "resection": null
    }
   },
   "clinical": {
@@ -116,7 +120,9 @@
    "clinical": {
     "primary_diagnosis": "Oligodendroglioma, NOS",
     "site": "Nervous system, NOS",
-    "performance_kps": "90"
+    "performance_kps": "90",
+    "status": "Newly diagnosed",
+    "resection": null
    }
   },
   "clinical": {
@@ -159,7 +165,9 @@
    "clinical": {
     "primary_diagnosis": "Astrocytoma, anaplastic",
     "site": "Nervous system, NOS",
-    "performance_kps": null
+    "performance_kps": null,
+    "status": "Newly diagnosed",
+    "resection": null
    }
   },
   "clinical": {

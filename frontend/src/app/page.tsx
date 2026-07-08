@@ -682,8 +682,8 @@ export default function Home() {
                     <th className="py-3 pr-4 font-medium">Grade</th>
                     <th className="py-3 pr-4 font-medium">KPS</th>
                     <th className="py-3 pr-4 font-medium">Site</th>
-                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Status *</th>
-                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Resection *</th>
+                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Status</th>
+                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Resection</th>
                     <th className="py-3 pr-4 font-medium">Steroid *</th>
                     <th className="py-3 pr-4 font-medium whitespace-nowrap">Location *</th>
                     <th className="py-3 pr-4 font-medium">Prior therapy</th>
@@ -752,10 +752,11 @@ export default function Home() {
                 </tbody>
               </table>
               <p className="px-5 py-3 text-[11px] text-slate-400">
-                Real de-identified TCGA patients (all recorded alive) — molecular from cBioPortal,
-                treatment + KPS/site from NIH GDC/cBioPortal. Columns marked <span className="font-medium">*</span>
-                (Status, Resection, Steroid, Location) are an illustrative clinical layer —
-                constructed, not in public data. Click a row to analyze. Survival is never shown.
+                Real de-identified TCGA patients (all recorded alive) — molecular from cBioPortal;
+                treatment, KPS, site, status &amp; resection from NIH GDC/cBioPortal. Only columns
+                marked <span className="font-medium">*</span> (Steroid, Location detail) are an
+                illustrative layer — constructed, not in public data ("—" where unavailable). Click
+                a row to analyze. Survival is never shown.
               </p>
             </div>
           )}

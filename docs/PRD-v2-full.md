@@ -615,9 +615,30 @@ Deterministic WHO CNS5 classifier  +  per-criterion Trial Fit (Claude)
     (cBioPortal sample ↗, NIH GDC case ↗, RxCUI ↗, ChEMBL ↗).
 ```
 
-All four demo patients are TCGA cases **recorded alive**; survival / vital status is never
-fetched or shown (red line + respect). A reviewer can also drop in *any* real TCGA glioma
-barcode via "Load live case" and the same assembly runs at request time.
+The panel holds **8 patients** — 4 curated cases + 4 more real living TCGA cases. All are TCGA
+cases **recorded alive**; survival / vital status is never fetched or shown (red line + respect).
+A reviewer can also drop in *any* real TCGA glioma barcode via "Load live case" and the same
+assembly runs at request time.
+
+### 12.5.1 Field coverage — validated against a real registry's structure
+
+To make sure the record reflects what clinicians actually track, the feature set was
+**calibrated against the field structure of a real, de-identified glioma patient-group registry**
+(a WHO grade-IV, 3-year+ patient self-report cohort). We used only its **schema (which fields a
+real registry captures)** — **no patient rows or values were imported**, and none will be: that
+data has no consent for public/product use and the repo is open-source (using it would violate
+both the project's synthetic-only rule and data-access policy). Public de-identified TCGA / GDC /
+cBioPortal remain the only sources (properly consented + licensed for this use).
+
+A real registry captures: onset age · sex · **precise tumor location** · current status
+(**recurrence**) · **functional status** · pathology + **Ki-67** · gene panel (IDH/TERT/TP53) ·
+MGMT (+ methylation %) · **resection extent** · chemoradiation + temozolomide regimen/brand ·
+recurrence-directed treatment · **clinical trials joined**. Our panel mirrors these, sourced as in
+§12.5: real where public data supports it (age/sex/location-coarse/status/functional-KPS/pathology/
+gene/MGMT/resection/treatment), and a small labeled illustrative layer only where it does not
+(steroid dose, precise sub-lobar location). This is the evidence for the "we reproduce the real
+manual workflow" thesis (§4.1.1): real clinicians and patient groups keep exactly this kind of
+column-by-column table and match trials against it by hand.
 
 ---
 
