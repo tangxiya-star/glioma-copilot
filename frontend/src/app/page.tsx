@@ -24,6 +24,7 @@ type Provenance = {
   pmid: string;
   url: string;
   markers: Record<string, string>;
+  treatment?: { source: string; url: string; agents: string[] };
 };
 type Patient = { id: string; label: string; report: string; provenance?: Provenance | null };
 type Screen = { status: "clear" | "flagged"; reasons: string[] };
@@ -538,10 +539,26 @@ export default function Home() {
                 </a>
               </div>
               <p className="text-neutral-500">
-                Source: cBioPortal <span className="font-mono">{prov.study}</span> — {prov.study_name}{" "}
-                (PMID {prov.pmid}). Molecular markers below are traceable to this real TCGA sample;
-                the clinical course is a labeled constructed layer.
+                Molecular source: cBioPortal <span className="font-mono">{prov.study}</span> (TCGA,
+                Cell 2016; PMID {prov.pmid}). Markers below trace to this real TCGA sample.
               </p>
+              {prov.treatment && (
+                <p className="text-neutral-500">
+                  Prior therapy (real):{" "}
+                  <span className="text-neutral-600 dark:text-neutral-300">
+                    {prov.treatment.agents.join(" · ")}
+                  </span>{" "}
+                  —{" "}
+                  <a
+                    href={prov.treatment.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-emerald-700 dark:text-emerald-400 hover:underline"
+                  >
+                    NIH GDC record ↗
+                  </a>
+                </p>
+              )}
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(prov.markers).map(([k, v]) => (
                   <span

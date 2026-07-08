@@ -26,12 +26,13 @@ prettier trial search.
 
 ## 1. Setup (15s)
 
-- Patient: **Case 001 — 54 y/o male, glioblastoma, IDH-wildtype** (recurrent; prior
-  surgery + radiation + temozolomide; California).
-- Say: "The patient *story* is synthetic — no PHI. But the **molecular data is a real,
-  de-identified TCGA sample** (TCGA-02-0033) — click the green card and you land on
-  that exact sample in cBioPortal. And the trials are **live from ClinicalTrials.gov**."
-- Point at the green **"Real molecular data · de-identified"** card + the marker chips.
+- Patient: **Case 001 — 64 y/o male, glioblastoma, IDH-wildtype** (real de-identified
+  TCGA sample TCGA-06-6695).
+- Say: "The **molecular data AND the prior treatment are both real, de-identified TCGA
+  data** — molecular from cBioPortal, treatment (radiation + temozolomide) from the NIH
+  GDC — for the same patient. Click the card and you land on that exact case. All four
+  demo cases are patients recorded **alive**. Trials are **live from ClinicalTrials.gov**."
+- Point at the green card: cBioPortal sample link + **GDC prior-therapy** link + marker chips.
 
 ---
 
@@ -121,7 +122,7 @@ filter can't see.
 
 - **"Isn't this just a trial matcher? Doctors already filter by IDH and get a pop-up list."** → Those tools do **discovery** — filter a few *structured* fields and return a list. We don't compete there; we take the candidate pool exhaustively and call it scoping, not matching. We fill the **last mile the clinician still does by hand after the list appears**: (1) check the *whole* record against the *whole* eligibility — 15–30 criteria, most of it free text a filter never reads — per criterion, cited; (2) surface what's **unknown/missing** as a next step; (3) **catch over-claims** (verify agent rewrites an over-stated "eligible" when a decisive criterion is actually unknown); (4) translate to plain language + a preference-aware shared-decision note. *Concrete:* a filter says our IDH-wildtype GBM patient "matches" recruiting GBM trials — but many **exclude prior bevacizumab**, which lives in the clinical narrative, not a filter field, so the match is **false**; our per-criterion fit catches it. From *"these trials may be relevant"* → *"why this one may or may not fit **this** patient, what's missing, and how you two decide."*
 - **"Is this giving medical advice?"** → No. Non-goal by design. Language is "potentially relevant," "for clinician review." No survival prediction, no autonomous enrollment, no picking a trial.
-- **"Is the molecular data real, or made up?"** → **Real**, de-identified: every case maps to a specific TCGA sample in cBioPortal (study `lgggbm_tcga_pub`, Cell 2016). Click the green card to verify. The clinical *narrative* around it (recurrence, prior bevacizumab) is a **labeled** constructed layer — we never present it as real.
+- **"Is the molecular data real, or made up?"** → **Real**, de-identified, from two public sources: molecular from cBioPortal (`lgggbm_tcga_pub`, Cell 2016) and **prior treatment from the NIH GDC** — both for the same real TCGA case (all recorded **alive**). Case 004's prior **bevacizumab is a real GDC treatment record**, not invented. The only constructed bit is a small labeled overlay (Case 001's "EGFR not yet tested" gate). Click the green card's cBioPortal + GDC links to verify.
 - **"Is the ranking a validated eligibility score?"** → No. It's a **transparent heuristic** re-weighting already-assessed trials by stated preferences; every adjustment shows its reason and delta. We deliberately avoid an unsupported "match %".
 - **"Trial data goes stale."** → Trials are pulled **live** from ClinicalTrials.gov on each Analyze; every trial links to its NCT record.
 - **"Did you cherry-pick a few trials?"** → No — we pull **all** recruiting trials for the tumor type and report "deep-assessed N of `<total>`"; screened-out trials stay listed and openable.

@@ -1,71 +1,74 @@
-"""Demo patients — REAL de-identified molecular data + a labeled constructed layer.
+"""Demo patients — REAL de-identified data from LIVING TCGA patients + a tiny labeled overlay.
 
 Honesty design (see CLAUDE.md + memory `glioma-demo-honesty`):
-  * The MOLECULAR profile and basic demographics of each case are REAL, pulled
-    from a public, de-identified TCGA sample via cBioPortal — study
-    `lgggbm_tcga_pub` (Ceccarelli et al., *Cell* 2016, PMID 26824661; the
-    "Merged Cohort of LGG and GBM", 1,122 tumors). TCGA is de-identified at
-    source (barcodes, no names). Each case shows its sample id + a clickable
-    cBioPortal link so a reviewer can trace every marker to the source.
-  * The CLINICAL NARRATIVE (disease course, prior treatment such as
-    bevacizumab, recurrence), the microscopic description, the IHC reagent/clone
-    lines, and the "EGFR not yet tested" gate in Case 001 are a CONSTRUCTED /
-    ILLUSTRATIVE demo layer — no public API carries them. They are labeled as
-    such in every report and are NOT presented as real per-sample findings.
-    (IHC clones named are genuine, widely-used reagents, cited as illustrative
-    of a standard neuropathology workup — not a claim about the TCGA run.)
-  * Patient PREFERENCES are deliberately NOT in these charts (a real chart never
-    says "prefers not to travel"). They belong in the Day-5 shared-decision
-    form, entered by the patient (doctor-guided).
-
-The reports are formatted like a real integrated neuropathology & molecular
-diagnostic report so the demo reads as clinician software. The report box stays
-editable, so a reviewer can paste any report live.
+  * MOLECULAR profile + demographics are REAL, from a public de-identified TCGA sample
+    via cBioPortal — study `lgggbm_tcga_pub` (Ceccarelli et al., *Cell* 2016,
+    PMID 26824661). Each case links to its exact sample on cBioPortal.
+  * PRIOR TREATMENT is REAL too, from the NIH **GDC** (Genomic Data Commons) clinical
+    files for the same TCGA case (treatment_type + therapeutic_agents). Each case links
+    to its GDC case record. So temozolomide / radiation / bevacizumab are actual recorded
+    therapies for that patient — not invented.
+  * All four cases are patients recorded as **ALIVE** in TCGA. We deliberately do NOT
+    surface vital status / survival anywhere (red line: no individual survival prognosis,
+    and out of respect — these are real people).
+  * The ONLY constructed bit is a small, clearly-labeled overlay: Case 001's "EGFR not
+    yet tested" gate (the open question the verify-catch demo turns on) and a light
+    "under review at recurrence/progression" framing. No molecular or treatment fact is
+    invented.
+  * Patient PREFERENCES are NOT in the chart — they belong in the Day-5 shared-decision
+    form (doctor-guided).
 """
 
 _STUDY = "lgggbm_tcga_pub"
 _STUDY_NAME = "Merged Cohort of LGG and GBM — TCGA, Cell 2016 (Ceccarelli et al.)"
 _PMID = "26824661"
-# Obviously-fake sign-out so the demo chart looks complete without impersonating
-# a real pathologist.
 _SIGN_OUT = "[demo signature] Neuropathology service — synthetic sign-out, not a real physician"
 
 
 def _cbio_url(sample_id: str) -> str:
-    # Patient/sample barcodes are the TCGA case id (drop the "-01" sample suffix).
     case_id = sample_id.rsplit("-", 1)[0]
     return f"https://www.cbioportal.org/patient?studyId={_STUDY}&caseId={case_id}"
 
 
-def _provenance(sample_id: str, markers: dict) -> dict:
+def _gdc_url(uuid: str) -> str:
+    return f"https://portal.gdc.cancer.gov/cases/{uuid}"
+
+
+def _provenance(sample_id: str, gdc_uuid: str, agents: list[str], markers: dict) -> dict:
     return {
         "sample_id": sample_id,
         "study": _STUDY,
         "study_name": _STUDY_NAME,
         "pmid": _PMID,
         "url": _cbio_url(sample_id),
-        "markers": markers,  # the REAL curated fields, verbatim from cBioPortal
+        "markers": markers,  # REAL curated cBioPortal fields
+        "treatment": {        # REAL GDC treatment record
+            "source": "NIH GDC (portal.gdc.cancer.gov) — TCGA clinical",
+            "url": _gdc_url(gdc_uuid),
+            "agents": agents,
+        },
     }
 
 
-def _report(prov: dict, *, specimen: str, clinical_history: str,
+def _report(prov: dict, *, specimen: str, prior_therapy: str, overlay: str,
             microscopic: str, ihc: str, molecular: str, integrated_dx: str) -> str:
-    """Assemble one integrated neuropathology report from real + constructed parts."""
     m = prov["markers"]
     return f"""INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT
-(demo chart — REAL molecular data + a clearly labeled CONSTRUCTED clinical layer)
+(demo chart — REAL molecular + REAL treatment data; a small labeled overlay is marked)
 
 MOLECULAR SOURCE (REAL, de-identified): {prov['sample_id']} · cBioPortal study
 {prov['study']} (TCGA, Cell 2016; PMID {prov['pmid']}).
 {prov['url']}
+TREATMENT SOURCE (REAL, de-identified): NIH GDC — same TCGA case.
+{prov['treatment']['url']}
 
 PATIENT / SPECIMEN
 - Patient: {m['AGE']}-year-old {m['SEX'].lower()} (age & sex from the TCGA sample).
 - Specimen: {specimen}
 
-CLINICAL HISTORY  [CONSTRUCTED — illustrative, not from TCGA]
-{clinical_history}
-
+PRIOR THERAPY  [REAL — GDC treatment record for this patient]
+{prior_therapy}
+{overlay}
 MICROSCOPIC DESCRIPTION  [illustrative of the TCGA grade / histology label]
 {microscopic}
 
@@ -82,30 +85,34 @@ Electronically signed: {_SIGN_OUT}
 """
 
 
-# --- Case 001: real GBM IDH-wildtype (TCGA-02-0033) ---------------------------
-# Real curated fields: 54yo Male, glioblastoma, WHO G4, IDH WT, IDHwt subtype,
-# MGMT Methylated, ATRX WT (retained). Real mutation call: TP53 R248Q.
-# Constructed layer: recurrence, prior Stupp, EGFR "pending" (the verify-catch gate).
-_PROV_001 = _provenance("TCGA-02-0033-01", {
-    "IDH_STATUS": "WT", "IDH_CODEL_SUBTYPE": "IDHwt",
-    "MGMT_PROMOTER_STATUS": "Methylated", "ATRX_STATUS": "WT (retained)",
-    "GRADE": "G4", "HISTOLOGICAL_DIAGNOSIS": "glioblastoma",
-    "AGE": "54", "SEX": "Male", "mutations": "TP53 R248Q",
-})
+# --- Case 001: real GBM IDH-wildtype, LIVING (TCGA-06-6695) -------------------
+# Real: 64yo M, glioblastoma, G4, IDH WT, MGMT methylated, ATRX WT. GDC tx: TMZ + RT.
+# Overlay: "EGFR not yet tested" gate (the verify-catch scenario).
+_PROV_001 = _provenance(
+    "TCGA-06-6695-01", "0628cb4a-c480-4b2f-bd2e-bb33e6994302",
+    ["temozolomide", "radiation (external beam)"],
+    {"IDH_STATUS": "WT", "IDH_CODEL_SUBTYPE": "IDHwt",
+     "MGMT_PROMOTER_STATUS": "Methylated", "ATRX_STATUS": "WT (retained)",
+     "GRADE": "G4", "HISTOLOGICAL_DIAGNOSIS": "glioblastoma",
+     "AGE": "64", "SEX": "Male",
+     "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"})
 CASE_001 = {
     "id": "case-001",
-    "label": "Case 001 — 54yo M, glioblastoma IDH-wildtype (TCGA-02-0033)",
+    "label": "Case 001 — 64yo M, glioblastoma IDH-wildtype (TCGA-06-6695)",
     "provenance": _PROV_001,
     "clinical": {"recurrent": True, "prior_bevacizumab": False},
     "report": _report(
         _PROV_001,
-        specimen="Right frontal brain tumor, craniotomy with resection.",
-        clinical_history=(
-            "- Right frontal glioblastoma; initial maximal safe resection.\n"
-            "- First-line chemoradiation with concurrent + adjuvant TEMOZOLOMIDE (Stupp).\n"
-            "- Now at FIRST RECURRENCE: measurable enhancing disease on MRI (RANO);\n"
-            "  no therapy yet for this recurrence. No prior bevacizumab.\n"
-            "- Performance status ECOG 1 (KPS ~80). Location: California."
+        specimen="Brain tumor, craniotomy with resection.",
+        prior_therapy=(
+            "- RADIATION (external beam) + TEMOZOLOMIDE (first-line chemoradiation)\n"
+            "  — recorded in the GDC treatment file for this patient."
+        ),
+        overlay=(
+            "\nOVERLAY  [CONSTRUCTED, illustrative — not from TCGA]\n"
+            "- Presented for review at recurrence; no therapy yet for this recurrence.\n"
+            "- EGFR amplification / EGFRvIII: NOT YET TESTED (pending) — the open question\n"
+            "  this review turns on.\n"
         ),
         microscopic=(
             "Diffuse astrocytic glioma with brisk mitotic activity, MICROVASCULAR\n"
@@ -113,34 +120,32 @@ CASE_001 = {
         ),
         ihc=(
             "    - IDH1 R132H (clone H09): NEGATIVE.\n"
-            "    - ATRX (clone CL0537): retained (intact nuclear expression).\n"
-            "    - p53 (clone DO-7): scattered positivity, consistent with TP53 mutation.\n"
-            "    - Ki-67 (clone MIB-1): proliferation index ~25%.\n"
+            "    - ATRX (clone CL0537): retained.\n"
+            "    - Ki-67 (clone MIB-1): elevated proliferation index.\n"
             "    - H3 K27M (clone RM192): not detected."
         ),
         molecular=(
             "    - IDH1/2 (whole-exome sequencing): WILD-TYPE (no R132 mutation).\n"
             "    - 1p/19q (copy-number array): non-codeleted.\n"
             "    - MGMT promoter (methylation array): METHYLATED.\n"
-            "    - TP53 (WES): mutated — R248Q.\n"
-            "    - EGFR: NOT YET TESTED — amplification / EGFRvIII status UNKNOWN\n"
-            "      (pending).  [CONSTRUCTED gate — illustrative, not from TCGA]"
+            "    - ATRX: retained.\n"
+            "    - EGFR: NOT YET TESTED — amplification / EGFRvIII UNKNOWN (pending).\n"
+            "      [OVERLAY — illustrative gate, not from TCGA]"
         ),
         integrated_dx="Glioblastoma, IDH-wildtype, CNS WHO grade 4 — recurrent.",
     ),
 }
 
-# --- Case 002: real IDH-mutant astrocytoma, grade 4 (TCGA-02-2483) -----------
-# Real: 43yo Male, IDH Mutant, non-codel, G4, ATRX Mutant (lost), MGMT Methylated,
-# TERT WT. Real variant calls: IDH1 R132H, ATRX W2001Cfs*14 (truncating), TP53 R273H.
-_PROV_002 = _provenance("TCGA-02-2483-01", {
-    "IDH_STATUS": "Mutant", "IDH_CODEL_SUBTYPE": "IDHmut-non-codel",
-    "MGMT_PROMOTER_STATUS": "Methylated", "TERT_PROMOTER_STATUS": "WT",
-    "ATRX_STATUS": "Mutant (loss)", "GRADE": "G4",
-    "HISTOLOGICAL_DIAGNOSIS": "glioblastoma (IDH-mutant → astrocytoma grade 4 under WHO CNS5)",
-    "AGE": "43", "SEX": "Male",
-    "mutations": "IDH1 R132H, ATRX W2001Cfs*14, TP53 R273H",
-})
+# --- Case 002: real IDH-mutant astrocytoma, grade 4, LIVING (TCGA-02-2483) ----
+_PROV_002 = _provenance(
+    "TCGA-02-2483-01", "a2ac9937-f351-4d78-9261-264bf6c21e0c",
+    ["temozolomide", "radiation (external beam)"],
+    {"IDH_STATUS": "Mutant", "IDH_CODEL_SUBTYPE": "IDHmut-non-codel",
+     "MGMT_PROMOTER_STATUS": "Methylated", "TERT_PROMOTER_STATUS": "WT",
+     "ATRX_STATUS": "Mutant (loss)", "GRADE": "G4",
+     "HISTOLOGICAL_DIAGNOSIS": "glioblastoma (IDH-mutant → astrocytoma grade 4 under WHO CNS5)",
+     "AGE": "43", "SEX": "Male",
+     "mutations": "IDH1 R132H, ATRX W2001Cfs*14, TP53 R273H"})
 CASE_002 = {
     "id": "case-002",
     "label": "Case 002 — 43yo M, astrocytoma IDH-mutant grade 4 (TCGA-02-2483)",
@@ -148,12 +153,12 @@ CASE_002 = {
     "clinical": {"recurrent": False, "prior_bevacizumab": False},
     "report": _report(
         _PROV_002,
-        specimen="Left temporal brain tumor, craniotomy with resection.",
-        clinical_history=(
-            "- Newly diagnosed left temporal diffuse glioma; maximal safe resection.\n"
-            "- No prior chemotherapy or radiation. No prior bevacizumab.\n"
-            "- Performance status ECOG 0. Location: New York."
+        specimen="Brain tumor, craniotomy with resection.",
+        prior_therapy=(
+            "- RADIATION (external beam) + TEMOZOLOMIDE (adjuvant chemoradiation)\n"
+            "  — recorded in the GDC treatment file for this patient."
         ),
+        overlay="",
         microscopic=(
             "Diffuse astrocytoma with increased cellularity and mitotic activity;\n"
             "microvascular proliferation and necrosis present (grade-4 features)."
@@ -162,7 +167,7 @@ CASE_002 = {
             "    - IDH1 R132H (clone H09): POSITIVE (strong cytoplasmic).\n"
             "    - ATRX (clone CL0537): LOSS of nuclear expression.\n"
             "    - p53 (clone DO-7): strong diffuse positivity, consistent with TP53 mutation.\n"
-            "    - Ki-67 (clone MIB-1): proliferation index elevated.\n"
+            "    - Ki-67 (clone MIB-1): elevated proliferation index.\n"
             "    - H3 K27M (clone RM192): not detected."
         ),
         molecular=(
@@ -180,16 +185,15 @@ CASE_002 = {
     ),
 }
 
-# --- Case 003: real oligodendroglioma, IDH-mut & 1p/19q-codeleted (TCGA-CS-5396)
-# Real: 53yo Female, oligodendroglioma, G3, IDH Mutant, codel, TERT Mutant,
-# ATRX WT (retained), MGMT Methylated. Real variant calls: IDH1 R132H, TP53 R273H.
-_PROV_003 = _provenance("TCGA-CS-5396-01", {
-    "IDH_STATUS": "Mutant", "IDH_CODEL_SUBTYPE": "IDHmut-codel",
-    "MGMT_PROMOTER_STATUS": "Methylated", "TERT_PROMOTER_STATUS": "Mutant",
-    "ATRX_STATUS": "WT (retained)", "GRADE": "G3",
-    "HISTOLOGICAL_DIAGNOSIS": "oligodendroglioma",
-    "AGE": "53", "SEX": "Female", "mutations": "IDH1 R132H, TP53 R273H",
-})
+# --- Case 003: real oligodendroglioma, LIVING (TCGA-CS-5396) ------------------
+_PROV_003 = _provenance(
+    "TCGA-CS-5396-01", "b6c2c9bd-625b-4a98-830c-49c344f6cb5f",
+    ["temozolomide", "radiation (external beam)"],
+    {"IDH_STATUS": "Mutant", "IDH_CODEL_SUBTYPE": "IDHmut-codel",
+     "MGMT_PROMOTER_STATUS": "Methylated", "TERT_PROMOTER_STATUS": "Mutant",
+     "ATRX_STATUS": "WT (retained)", "GRADE": "G3",
+     "HISTOLOGICAL_DIAGNOSIS": "oligodendroglioma",
+     "AGE": "53", "SEX": "Female", "mutations": "IDH1 R132H, TP53 R273H"})
 CASE_003 = {
     "id": "case-003",
     "label": "Case 003 — 53yo F, oligodendroglioma IDH-mut 1p/19q-codel (TCGA-CS-5396)",
@@ -197,12 +201,12 @@ CASE_003 = {
     "clinical": {"recurrent": False, "prior_bevacizumab": False},
     "report": _report(
         _PROV_003,
-        specimen="Right frontal brain tumor, craniotomy with resection.",
-        clinical_history=(
-            "- Right frontal diffuse glioma; gross-total resection.\n"
-            "- No prior chemotherapy or radiation. No prior bevacizumab.\n"
-            "- Performance status ECOG 0. Location: Illinois."
+        specimen="Brain tumor, craniotomy with resection.",
+        prior_therapy=(
+            "- RADIATION (external beam) + TEMOZOLOMIDE (adjuvant chemoradiation)\n"
+            "  — recorded in the GDC treatment file for this patient."
         ),
+        overlay="",
         microscopic=(
             "Diffuse glioma with monomorphic rounded nuclei and perinuclear halos\n"
             "('fried-egg' artifact) and a delicate branching ('chicken-wire') capillary\n"
@@ -228,30 +232,33 @@ CASE_003 = {
     ),
 }
 
-# --- Case 004: real GBM IDH-wildtype (TCGA-02-0003), prior-bevacizumab demo ---
-# Real: 50yo Male, glioblastoma, G4, IDH WT, MGMT Unmethylated, ATRX WT.
-# Real variant calls: EGFR C620Y, TP53 H178Q, TP53 R282W.
-# Constructed layer: recurrence + prior bevacizumab (the buried-exclusion demo).
-_PROV_004 = _provenance("TCGA-02-0003-01", {
-    "IDH_STATUS": "WT", "IDH_CODEL_SUBTYPE": "IDHwt",
-    "MGMT_PROMOTER_STATUS": "Unmethylated", "ATRX_STATUS": "WT (retained)",
-    "GRADE": "G4", "HISTOLOGICAL_DIAGNOSIS": "glioblastoma",
-    "AGE": "50", "SEX": "Male", "mutations": "EGFR C620Y, TP53 H178Q, TP53 R282W",
-})
+# --- Case 004: real GBM IDH-wildtype, LIVING, REAL prior bevacizumab (TCGA-06-5413)
+# Real: 67yo M, glioblastoma, G4, IDH WT, MGMT unmethylated, ATRX WT.
+# GDC tx: TMZ + radiation + BEVACIZUMAB (real anti-VEGF record) — the exclusion demo.
+_PROV_004 = _provenance(
+    "TCGA-06-5413-01", "8d2e88d9-d8d0-4c42-8aa2-205a788dea58",
+    ["temozolomide", "bevacizumab", "radiation (external beam)"],
+    {"IDH_STATUS": "WT", "IDH_CODEL_SUBTYPE": "IDHwt",
+     "MGMT_PROMOTER_STATUS": "Unmethylated", "ATRX_STATUS": "WT (retained)",
+     "GRADE": "G4", "HISTOLOGICAL_DIAGNOSIS": "glioblastoma",
+     "AGE": "67", "SEX": "Male",
+     "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"})
 CASE_004 = {
     "id": "case-004",
-    "label": "Case 004 — 50yo M, recurrent glioblastoma IDH-wt · prior bevacizumab (TCGA-02-0003)",
+    "label": "Case 004 — 67yo M, glioblastoma IDH-wt · prior bevacizumab (TCGA-06-5413)",
     "provenance": _PROV_004,
     "clinical": {"recurrent": True, "prior_bevacizumab": True},
     "report": _report(
         _PROV_004,
-        specimen="Left parietal brain tumor, craniotomy with resection.",
-        clinical_history=(
-            "- Left parietal glioblastoma; initial subtotal resection.\n"
-            "- First-line chemoradiation with concurrent + adjuvant TEMOZOLOMIDE (Stupp).\n"
-            "- At progression started BEVACIZUMAB (several cycles); now further progression\n"
-            "  ON bevacizumab, seeking a clinical trial.\n"
-            "- Performance status ECOG 1 (KPS ~80). Location: California."
+        specimen="Brain tumor, craniotomy with resection.",
+        prior_therapy=(
+            "- RADIATION (external beam) + TEMOZOLOMIDE (first-line chemoradiation),\n"
+            "  then BEVACIZUMAB (anti-VEGF) — ALL recorded in the GDC treatment file for\n"
+            "  this patient. (Bevacizumab is a common later-line / recurrence agent in GBM.)"
+        ),
+        overlay=(
+            "\nOVERLAY  [CONSTRUCTED, illustrative — not from TCGA]\n"
+            "- Under review at progression for a next-line clinical trial.\n"
         ),
         microscopic=(
             "Diffuse astrocytic glioma with brisk mitotic activity, MICROVASCULAR\n"
@@ -260,16 +267,14 @@ CASE_004 = {
         ihc=(
             "    - IDH1 R132H (clone H09): NEGATIVE.\n"
             "    - ATRX (clone CL0537): retained.\n"
-            "    - p53 (clone DO-7): positivity consistent with TP53 mutation.\n"
-            "    - Ki-67 (clone MIB-1): proliferation index ~30%.\n"
+            "    - Ki-67 (clone MIB-1): elevated proliferation index.\n"
             "    - H3 K27M (clone RM192): not detected."
         ),
         molecular=(
             "    - IDH1/2 (whole-exome sequencing): WILD-TYPE (no R132 mutation).\n"
             "    - 1p/19q (copy-number array): non-codeleted.\n"
             "    - MGMT promoter (methylation array): UNMETHYLATED.\n"
-            "    - EGFR (WES): mutated — C620Y (tested).\n"
-            "    - TP53 (WES): mutated — H178Q, R282W."
+            "    - ATRX: retained."
         ),
         integrated_dx="Glioblastoma, IDH-wildtype, CNS WHO grade 4 — recurrent.",
     ),
