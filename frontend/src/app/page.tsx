@@ -555,42 +555,6 @@ export default function Home() {
 
           <div className="space-y-1.5">
             <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Cases
-            </p>
-            {cases.map((p) => {
-              const num = p.id.replace("case-", "");
-              const desc = (p.label.split("—")[1] || "").split("(")[0].trim();
-              const active = p.id === caseId;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => openPatient(p.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition ${
-                    active
-                      ? "bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-indigo-200 dark:ring-indigo-900"
-                      : "hover:bg-slate-50 dark:hover:bg-neutral-800/50"
-                  }`}
-                >
-                  <span
-                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${
-                      active
-                        ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white"
-                        : "bg-slate-100 dark:bg-neutral-800 text-slate-500"
-                    }`}
-                  >
-                    {num}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">Case {num}</span>
-                    <span className="block truncate text-[11px] text-slate-400">{desc}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Load live case
             </p>
             <div className="flex gap-1">

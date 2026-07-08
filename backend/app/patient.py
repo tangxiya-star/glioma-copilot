@@ -282,19 +282,6 @@ CASE_004 = {
 
 SYNTHETIC_PATIENTS = [CASE_001, CASE_002, CASE_003, CASE_004]
 
-# Extra panel patients — a SNAPSHOT of real living TCGA cases (built once from
-# cBioPortal + GDC via tcga.build_case_from_tcga, saved to panel_extra.json) so the
-# patient panel loads instantly and is stable, with no runtime API dependency.
-import json as _json  # noqa: E402
-from pathlib import Path as _Path  # noqa: E402
-
-_extra = _Path(__file__).parent / "panel_extra.json"
-if _extra.exists():
-    try:
-        SYNTHETIC_PATIENTS.extend(_json.loads(_extra.read_text()))
-    except Exception as _e:  # pragma: no cover
-        print(f"[patient] panel_extra load skipped: {_e}")
-
 # Default patient (used where a single case is needed, e.g. extract/classify defaults).
 SYNTHETIC_PATIENT = CASE_001
 
