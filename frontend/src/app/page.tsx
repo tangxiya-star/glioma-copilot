@@ -485,65 +485,146 @@ export default function Home() {
 
   const c = result?.classification;
   const prov = cases.find((p) => p.id === caseId)?.provenance;
+  const hasTriage = Object.keys(triage).length > 0;
+
+  const CARD =
+    "rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-sm";
+  const PRIMARY =
+    "rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium shadow-sm hover:opacity-95 disabled:opacity-50 transition";
 
   return (
-    <main className="max-w-6xl mx-auto p-6 space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-3xl font-bold">🧠 Glioma Copilot</h1>
-        <p className="text-neutral-500 text-sm">
-          Report → WHO CNS5 classification → per-criterion trial fit, every step cited
-        </p>
-      </header>
+    <div className="min-h-screen bg-slate-50 dark:bg-neutral-950 text-slate-800 dark:text-neutral-200">
+      <div className="flex">
+        {/* ===== Sidebar ===== */}
+        <aside className="sticky top-0 h-screen w-64 shrink-0 flex flex-col gap-6 bg-white dark:bg-neutral-900 border-r border-slate-200/80 dark:border-neutral-800 p-5">
+          <div className="flex items-center gap-2">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-lg">
+              🧠
+            </div>
+            <div className="leading-tight">
+              <p className="font-bold">Glioma Copilot</p>
+              <p className="text-[11px] text-slate-400">evidence · fit · shared decision</p>
+            </div>
+          </div>
 
-      {/* Two steps: clinician review is evidence-only (no patient input); the shared
-          decision (preferences) is a separate, doctor-guided step done with the patient. */}
-      <div className="flex gap-1 border-b border-neutral-200 dark:border-neutral-800">
-        <TabButton active={view === "clinician"} onClick={() => setView("clinician")}>
-          ① Clinician review
-        </TabButton>
-        <TabButton
-          active={view === "shared"}
-          onClick={() => setView("shared")}
-          disabled={Object.keys(triage).length === 0}
-        >
-          ② Shared decision {Object.keys(triage).length === 0 && "· review first"}
-        </TabButton>
-      </div>
+          <div className="space-y-1.5">
+            <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Cases
+            </p>
+            {cases.map((p) => {
+              const num = p.id.replace("case-", "");
+              const desc = (p.label.split("—")[1] || "").split("(")[0].trim();
+              const active = p.id === caseId;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => loadCase(p.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition ${
+                    active
+                      ? "bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-indigo-200 dark:ring-indigo-900"
+                      : "hover:bg-slate-50 dark:hover:bg-neutral-800/50"
+                  }`}
+                >
+                  <span
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${
+                      active
+                        ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white"
+                        : "bg-slate-100 dark:bg-neutral-800 text-slate-500"
+                    }`}
+                  >
+                    {num}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">Case {num}</span>
+                    <span className="block truncate text-[11px] text-slate-400">{desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-      {view === "clinician" && (
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Report + classification */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Molecular report</h2>
+          <div className="space-y-1.5">
+            <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Workflow
+            </p>
+            <StepButton active={view === "clinician"} onClick={() => setView("clinician")} n="1" label="Clinician review" />
+            <StepButton
+              active={view === "shared"}
+              onClick={() => setView("shared")}
+              disabled={!hasTriage}
+              n="2"
+              label="Shared decision"
+              hint={!hasTriage ? "review first" : undefined}
+            />
+          </div>
+        </aside>
+
+        {/* ===== Main ===== */}
+        <main className="min-w-0 flex-1 p-6 space-y-6">
+          {/* Top bar */}
+          <div className={`${CARD} flex flex-wrap items-center gap-3 px-5 py-3.5`}>
+            <div className="min-w-0">
+              <p className="text-lg font-bold">
+                {c ? c.diagnosis : `Case ${caseId.replace("case-", "")}`}
+                {c && (
+                  <span className="ml-2 text-sm font-normal text-slate-400">
+                    {c.grade != null ? `grade ${c.grade}` : "grade pending"}
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-slate-400">
+                {view === "clinician"
+                  ? "Clinician review — report → classification → trial fit, every step cited"
+                  : "Shared decision — preferences re-weight the assessed options (for discussion)"}
+              </p>
+            </div>
             <button
               onClick={analyze}
               disabled={loading || !report}
-              className="text-sm rounded-md bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-3 py-1.5"
+              className={`${PRIMARY} ml-auto px-5 py-2 text-sm`}
             >
-              {loading ? "Analyzing…" : "Analyze"}
+              {loading ? "Analyzing…" : "⚡ Analyze"}
             </button>
           </div>
-          <select
-            value={caseId}
-            onChange={(e) => loadCase(e.target.value)}
-            className="w-full text-sm border border-neutral-200 dark:border-neutral-800 bg-transparent rounded-md px-2 py-1.5"
-          >
-            {cases.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <textarea
-            value={report}
-            onChange={(e) => setReport(e.target.value)}
-            spellCheck={false}
-            className="w-full h-44 text-xs font-mono bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-3"
-          />
 
-          {prov && (
-            <div className="rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 text-xs space-y-2">
+          {/* Stat tiles */}
+          {view === "clinician" && (result || pool) && (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-sm">
+                <p className="text-[11px] uppercase tracking-wide text-white/70">WHO CNS5</p>
+                <p className="mt-1 text-sm font-semibold leading-snug">
+                  {c ? c.diagnosis : "—"}
+                </p>
+              </div>
+              <StatTile label="Recruiting pulled" value={pool ? pool.total : "…"} tone="slate" sub="every one" />
+              <StatTile label="Screen-clear" value={pool ? pool.clear : "…"} tone="emerald" sub={pool ? `${pool.flagged} flagged` : ""} />
+              <StatTile
+                label="Deep-assessed"
+                value={pool ? pool.deepAssessed || (triaging ? "…" : 0) : "…"}
+                tone="indigo"
+                sub={pool ? `of ${pool.total}` : ""}
+              />
+            </div>
+          )}
+
+          {view === "clinician" && (
+          <div className="grid gap-5 lg:grid-cols-2">
+            {/* Report + provenance + classification + drugs */}
+            <section className="space-y-5">
+              <div className={`${CARD} p-5 space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold">Molecular report</h2>
+                </div>
+                <textarea
+                  value={report}
+                  onChange={(e) => setReport(e.target.value)}
+                  spellCheck={false}
+                  className="w-full h-44 text-xs font-mono bg-slate-50 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 rounded-xl p-3"
+                />
+              </div>
+
+              {prov && (
+            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/20 p-4 text-xs space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-emerald-700 dark:text-emerald-300">
                   ✓ Real molecular data · de-identified
@@ -592,9 +673,9 @@ export default function Home() {
           )}
 
           {c && (
-            <div className="rounded-xl border border-violet-300 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30 p-4 space-y-3">
+            <div className={`${CARD} p-5 space-y-3`}>
               <div>
-                <p className="text-xs uppercase tracking-wide text-violet-500">
+                <p className="text-xs uppercase tracking-wide text-indigo-500">
                   WHO CNS5 classification
                 </p>
                 <p className="text-lg font-bold">
@@ -667,23 +748,23 @@ export default function Home() {
         </section>
 
         {/* Live trials — click to assess fit */}
-        <section className="space-y-3">
+        <section className={`${CARD} p-5 space-y-3`}>
           <h2 className="font-semibold">
             Recruiting trials{" "}
             {matchedCondition ? (
-              <span className="text-violet-500 font-normal text-sm">
+              <span className="text-indigo-500 font-normal text-sm">
                 · matched to “{matchedCondition}”
               </span>
             ) : (
-              <span className="text-neutral-400 font-normal text-sm">· step 2</span>
+              <span className="text-slate-400 font-normal text-sm">· step 2</span>
             )}
           </h2>
 
           {/* Flow is Analyze-first: trials are matched to the patient, not browsed. */}
           {!result && !loading && (
             <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-sm text-neutral-500">
-              <span className="font-medium text-neutral-600 dark:text-neutral-300">
-                ① Run <span className="text-violet-600">Analyze</span> first.
+              <span className="font-medium text-slate-600 dark:text-neutral-300">
+                ① Run <span className="text-indigo-600">Analyze</span> first.
               </span>{" "}
               It classifies this patient (WHO CNS5), pulls <em>every</em> recruiting trial for the
               tumor type, screens all of them for hard conflicts, then runs the real per-criterion
@@ -692,7 +773,7 @@ export default function Home() {
             </div>
           )}
           {loading && (
-            <p className="text-sm text-violet-500 animate-pulse">Matching trials to this patient…</p>
+            <p className="text-sm text-indigo-500 animate-pulse">Matching trials to this patient…</p>
           )}
 
           {result && (
@@ -704,19 +785,19 @@ export default function Home() {
                       {pool.total}
                     </span>{" "}
                     recruiting trials pulled (every one — not a top-N slice)
-                    {triaging && <span className="text-violet-500"> · working…</span>}
+                    {triaging && <span className="text-indigo-500"> · working…</span>}
                   </p>
                   <p>
                     <span className="text-emerald-600">{pool.clear} screen-clear</span> ·{" "}
                     <span className="text-amber-600">{pool.flagged} flagged</span> (hard conflict,
                     deprioritized — not hidden) ·{" "}
-                    <span className="text-violet-600">
+                    <span className="text-indigo-600">
                       deep-assessed {pool.deepAssessed || (triaging ? "…" : 0)} of {pool.total}
                     </span>
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-violet-500 animate-pulse">
+                <p className="text-sm text-indigo-500 animate-pulse">
                   Pulling every recruiting trial + screening…
                 </p>
               )}
@@ -729,9 +810,9 @@ export default function Home() {
                     <li key={t.nct_id}>
                       <button
                         onClick={() => openTrial(t)}
-                        className={`w-full text-left border rounded-md px-3 py-2 hover:border-violet-400 ${
+                        className={`w-full text-left border rounded-md px-3 py-2 hover:border-indigo-400 ${
                           fitNct === t.nct_id
-                            ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
+                            ? "border-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/30"
                             : "border-neutral-200 dark:border-neutral-800"
                         } ${flagged ? "opacity-60" : ""}`}
                       >
@@ -784,11 +865,11 @@ export default function Home() {
 
       {/* Fit assessment table — clinician review */}
       {view === "clinician" && (fitLoading || fit) && (
-        <section className="space-y-3">
+        <section className={`${CARD} p-5 space-y-3`}>
           <h2 className="font-semibold">
             Trial Fit Assessment
             {fitLoading && (
-              <span className="ml-2 text-sm font-normal text-violet-500 animate-pulse">
+              <span className="ml-2 text-sm font-normal text-indigo-500 animate-pulse">
                 ● streaming…
               </span>
             )}
@@ -799,7 +880,7 @@ export default function Home() {
           {fit && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <a href={fit.trial.url} target="_blank" rel="noreferrer" className="font-medium text-violet-600 hover:underline">
+                <a href={fit.trial.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-600 hover:underline">
                   {fit.trial.nct_id}
                 </a>
                 <span className="text-neutral-500">{fit.trial.title}</span>
@@ -844,7 +925,7 @@ export default function Home() {
                 <button
                   onClick={runReview}
                   disabled={reviewLoading}
-                  className="text-sm rounded-md bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-3 py-1.5"
+                  className={`${PRIMARY} text-sm px-4 py-2`}
                 >
                   {reviewLoading ? "Running 3-agent review…" : "Run 3-agent verification"}
                 </button>
@@ -1003,10 +1084,11 @@ export default function Home() {
       {/* Step 2: shared-decision workspace — preferences visibly re-rank the
           already-assessed candidates (heuristic + documented, NOT a recommendation). */}
       {view === "shared" && (
-        <section className="space-y-4">
+        <section className="space-y-5">
+          <div className={`${CARD} p-5 space-y-4`}>
           <div>
             <h2 className="font-semibold">Shared-decision workspace</h2>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-slate-400">
               Patient preferences (entered doctor-guided — not part of the chart) re-weight the
               assessed candidates. Transparent heuristic with reasons — for discussion, not a
               recommendation.
@@ -1078,10 +1160,11 @@ export default function Home() {
           <button
             onClick={runSummary}
             disabled={summaryLoading}
-            className="text-sm rounded-md bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-3 py-1.5"
+            className={`${PRIMARY} text-sm px-4 py-2`}
           >
             {summaryLoading ? "Generating…" : "Generate shared-decision summary"}
           </button>
+          </div>
 
           {summary && (
             <div className="space-y-4">
@@ -1128,9 +1211,9 @@ export default function Home() {
               </div>
 
               {summary.note?.note && (
-                <div className="rounded-xl border border-violet-300 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30 p-4 space-y-2">
+                <div className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/20 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs uppercase tracking-wide text-violet-500">
+                    <p className="text-xs uppercase tracking-wide text-indigo-500">
                       Shared-decision note
                     </p>
                     <span className="text-[11px] text-neutral-400">
@@ -1151,7 +1234,65 @@ export default function Home() {
           )}
         </section>
       )}
-    </main>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function StepButton({
+  active,
+  onClick,
+  disabled,
+  n,
+  label,
+  hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  n: string;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition disabled:opacity-40 disabled:cursor-not-allowed ${
+        active
+          ? "bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-indigo-200 dark:ring-indigo-900"
+          : "hover:bg-slate-50 dark:hover:bg-neutral-800/50"
+      }`}
+    >
+      <span
+        className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-semibold ${
+          active ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white" : "bg-slate-100 dark:bg-neutral-800 text-slate-500"
+        }`}
+      >
+        {n}
+      </span>
+      <span className="text-sm font-medium">
+        {label}
+        {hint && <span className="ml-1 text-[11px] font-normal text-slate-400">· {hint}</span>}
+      </span>
+    </button>
+  );
+}
+
+const TONE: Record<string, string> = {
+  slate: "text-slate-700 dark:text-slate-200",
+  emerald: "text-emerald-600",
+  indigo: "text-indigo-600",
+};
+
+function StatTile({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: string; tone: string }) {
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-sm p-4">
+      <p className="text-[11px] uppercase tracking-wide text-slate-400">{label}</p>
+      <p className={`mt-1 text-2xl font-bold ${TONE[tone] ?? ""}`}>{value}</p>
+      {sub && <p className="text-[11px] text-slate-400">{sub}</p>}
+    </div>
   );
 }
 
@@ -1168,11 +1309,11 @@ function PrefSelect({
 }) {
   return (
     <label className="text-sm space-y-1">
-      <span className="block text-xs text-neutral-500">{label}</span>
+      <span className="block text-xs text-slate-500">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-neutral-200 dark:border-neutral-800 bg-transparent rounded-md px-2 py-1.5"
+        className="w-full rounded-xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
