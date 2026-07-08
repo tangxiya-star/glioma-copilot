@@ -151,14 +151,29 @@ All five tasks below are implemented, verified, and committed on `main`:
    currently leaking into the reports; keep only clinical facts (location may stay as a
    demographic/logistics fact, but drop "prefers/wary" wording).
 
-**Then Day 5 — shared-decision workspace:** plain-language agent (renders the verified
-per-trial analysis for patients), the preference form from (5), and a shared-decision summary
-where preferences **visibly re-rank** the options (heuristic sort + documented rationale, NOT
-autonomous recommendation — see red lines). Wire the full flow: report → classify → fit(triage)
-→ verify → explain → preferences → summary.
+**Day 5 — shared-decision workspace — ✅ DONE.** Full flow wired: report → classify
+→ fit(triage) → verify → explain → preferences → summary.
+- `POST /api/explain` — plain-language agent renders a trial's verified fit for the
+  patient (~7th grade); honest (unknowns → questions to confirm, never "you are
+  eligible"; not medical advice). UI: "Explain for patient" button + card in fit view.
+- `POST /api/summary` — DETERMINISTIC preference re-rank of the deep-assessed
+  candidates (`_preference_rerank`) + plain non-directive note. Every adjustment
+  (travel vs home_state, earliest-phase wariness, QoL vs aggressive) shows a
+  reason/delta. Prefs entered in a Day-5 form (travel/home_state/goal/phase1/
+  caregiver/financial), NOT in the chart. Preferences **visibly re-rank** without
+  discovery or recommendation (red lines held).
+- `trials.py` now surfaces Phase + site States for the heuristics.
+- Also (post-plan, agreed with user): candidate retrieval upgraded to an
+  **exhaustive** Stage 0 (pull ALL recruiting trials, not top-N) + deterministic
+  recall-preserving **Stage 1 pre-screen** (`prescreen.py` — hard-conflict
+  deprioritize, never hide, reasons shown) + Stage 2 fit on top screen-clear N.
+  Documented in PRD §11.3 (with ASCII diagram). Answers "what if the best trial is
+  buried at #50" without becoming a finder.
 
-**Day 6 —** polish, lock the demo case, record 3-min video (`docs/demo_script.md`), 100–200 word
-summary, make repo public, submit before Jul 13 9pm ET.
+**Day 6 (next) —** polish, lock the demo case, record 3-min video (`docs/demo_script.md`),
+100–200 word summary, make repo public, submit before Jul 13 9pm ET. NOTE: nothing is
+deployed to Render/Vercel yet — the live sites still run pre-refactor code; deploy the
+batch (Days-5-prep + Day 5) before the demo.
 
 **Optional:** a "drafting model" toggle (Sonnet 5 ↔ Haiku) to make the Case 001 verify-catch
 reliable for the demo (honest capability-tiering, per the honest findings above).
