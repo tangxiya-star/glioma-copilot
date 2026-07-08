@@ -35,3 +35,11 @@ CREATE TABLE IF NOT EXISTS eligibility_results (
 
 CREATE INDEX IF NOT EXISTS idx_elig_patient ON eligibility_results (patient_id);
 CREATE INDEX IF NOT EXISTS idx_elig_nct ON eligibility_results (nct_id);
+
+-- Drug-name normalization cache: Claude extracts the mention, RxNorm + ChEMBL
+-- normalize it to canonical identities (grounds "Claude is not the source of truth").
+CREATE TABLE IF NOT EXISTS drug_normalizations (
+    input       TEXT PRIMARY KEY,   -- lowercased drug mention as extracted
+    normalized  JSONB NOT NULL,     -- {rxcui, ingredient, chembl_id, mechanisms, sources...}
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);

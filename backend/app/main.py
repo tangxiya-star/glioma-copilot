@@ -22,12 +22,15 @@ from .config import AGENT_MODELS, ANTHROPIC_API_KEY, CORS_ORIGINS, model_for, tu
 from .db import (
     db_counts,
     db_ping,
+    get_drug_cache,
     get_eligibility_results,
     init_schema,
+    put_drug_cache,
     store_eligibility_results,
     upsert_patient,
     upsert_trials,
 )
+from .drugs import normalize_drug
 from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient
 from .prescreen import patient_screen_facts, screen_trial
 from .trials import fetch_all_recruiting, fetch_glioma_trials, fetch_trial
@@ -821,3 +824,64 @@ def summary(req: SummaryRequest):
         f"RANKED CANDIDATES (deterministic, preference-weighted):\n{digest}",
     ) or {"note": "", "discussion_points": []}
     return {"ranked": ranked, "preferences": prefs, "note": note}
+
+
+# --- Drug-name normalization: Claude extracts -> RxNorm + ChEMBL ground it ---
+
+def _normalize_cached(name: str) -> dict:
+    """Normalize one drug via Postgres cache, else live RxNorm+ChEMBL then persist."""
+    key = (name or "").strip().lower()
+    if not key:
+        return normalize_drug(name)
+    try:
+        cached = get_drug_cache(key)
+        if cached:
+            return cached
+    except Exception as e:
+        print(f"[drugs] cache read skipped: {e}")
+    result = normalize_drug(name)
+    try:
+        put_drug_cache(key, result)
+    except Exception as e:
+        print(f"[drugs] cache write skipped: {e}")
+    return result
+
+
+class DrugNormalizeRequest(BaseModel):
+    names: list[str]
+
+
+@app.post("/api/drugs/normalize")
+def drugs_normalize(req: DrugNormalizeRequest):
+    """Normalize a list of drug mentions to canonical RxNorm + ChEMBL identities."""
+    seen: set[str] = set()
+    out = []
+    for n in req.names:
+        k = (n or "").strip().lower()
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        out.append(_normalize_cached(n))
+    return {"drugs": out}
+
+
+_DRUG_EXTRACT_SYSTEM = (
+    "List the DISTINCT drug / therapy names mentioned as treatments the patient has "
+    "received in this report. Report ONLY drug names actually present (generic or brand), "
+    "one canonical token each — no doses, no regimen names. Return STRICT JSON only:\n"
+    '{"drugs": ["temozolomide", "bevacizumab"]}'
+)
+
+
+@app.post("/api/drugs/from_patient")
+def drugs_from_patient(req: ExtractRequest):
+    """Extract drug mentions from a patient report (Claude), then normalize each.
+
+    The demoable groundedness beat: Claude only NAMES the drugs; RxNorm + ChEMBL
+    resolve identity + mechanism authoritatively.
+    """
+    report = req.report or SYNTHETIC_PATIENT["report"]
+    parsed = _agent_json("extract", _DRUG_EXTRACT_SYSTEM, report) or {}
+    names = [n for n in (parsed.get("drugs") or []) if isinstance(n, str)]
+    drugs = [_normalize_cached(n) for n in dict.fromkeys(n.strip().lower() for n in names if n.strip())]
+    return {"mentions": names, "drugs": drugs}

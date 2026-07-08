@@ -444,35 +444,46 @@ status = recruiting OR active not recruiting OR completed
 
 ---
 
-## 12.2 Drug Normalization Data
+## 12.2 Drug Normalization Data — ✅ IMPLEMENTED (RxNorm Tier 1 + ChEMBL Tier 2)
 
-**Source:** RxNorm + ChEMBL  
-**Use for:** mapping messy drug names to canonical drug names.
+**Source:** RxNorm (via the key-free RxNav REST API) + ChEMBL (REST API)
+**Use for:** grounding messy drug mentions in an authoritative identity + mechanism —
+so drug identity comes from a public source, not the model ("Claude is not the source
+of truth"). Implemented in `backend/app/drugs.py`, cached in Postgres
+(`drug_normalizations`).
 
-RxNorm can help match brand names, generic names, drug products, and ingredients to RxCUI identifiers. ChEMBL can provide drug and molecule metadata, including synonyms and drug indications.
-
-### Fields needed
-
-```text
-Drug name
-Brand name
-Generic name
-Synonyms
-RxCUI
-ChEMBL ID
-Ingredient
-Drug class
-```
-
-### Example mapping
+**Pipeline (`normalize_drug`):**
 
 ```text
-Temodar
-TMZ
-Temozolomide 150mg capsule
+Claude names the drug mention  (extract, no doses/regimen names)
         ↓
-Canonical Drug: Temozolomide
+Tier 1 · RxNorm/RxNav:  mention → RxCUI → canonical INGREDIENT
+        exact `rxcui.json?search=1`, fallback `approximateTerm.json` (brands/abbrev/typos)
+        ↓
+Tier 2 · ChEMBL:  ingredient → molecule (ChEMBL ID) → MECHANISM OF ACTION / class
+        ↓
+{ input, rxcui, ingredient, chembl_id, mechanisms[], sources{rxnorm,chembl} }  (cached)
 ```
+
+**Endpoints:** `POST /api/drugs/normalize {names:[…]}` and `POST /api/drugs/from_patient`
+(extracts the report's prior therapies via Claude, then normalizes each). The UI shows a
+"Prior therapies · normalized (RxNorm + ChEMBL)" card after Analyze, with clickable
+RxCUI + ChEMBL links.
+
+**Verified examples (live):**
+
+```text
+Temodar   →  temozolomide  (RxCUI 37776, CHEMBL810)   · "DNA inhibitor"
+TMZ       →  temozolomide  (RxCUI 37776)               · brand/abbrev collapse to one drug
+bevacizumab → bevacizumab  (RxCUI 253337, CHEMBL1201583) · "Vascular endothelial growth
+              factor A inhibitor"   ← Tier-2 mechanism; grounds "prior anti-VEGF therapy"
+```
+
+> The ChEMBL mechanism (e.g. bevacizumab = VEGF-A inhibitor) is what makes authoritative
+> drug-class matching possible for eligibility phrased as "prior anti-VEGF therapy" rather
+> than a specific drug name. (Feeding mechanism into the Stage-1 pre-screen is a natural
+> next step; today the screen keyword-matches bevacizumab/anti-VEGF and the fit layer
+> reasons over the rest.)
 
 ---
 

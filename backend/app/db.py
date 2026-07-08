@@ -124,6 +124,26 @@ def get_eligibility_results(patient_id: str, nct_id: str) -> list[dict[str, Any]
     ]
 
 
+def get_drug_cache(input_lower: str) -> dict | None:
+    """Return a cached RxNorm/ChEMBL normalization for a drug mention, or None."""
+    with psycopg.connect(DATABASE_URL) as conn:
+        row = conn.execute(
+            "SELECT normalized FROM drug_normalizations WHERE input = %s",
+            (input_lower,),
+        ).fetchone()
+        return row[0] if row else None
+
+
+def put_drug_cache(input_lower: str, normalized: dict) -> None:
+    """Persist a drug normalization (idempotent upsert)."""
+    with psycopg.connect(DATABASE_URL) as conn:
+        conn.execute(
+            "INSERT INTO drug_normalizations (input, normalized) VALUES (%s, %s) "
+            "ON CONFLICT (input) DO UPDATE SET normalized = EXCLUDED.normalized",
+            (input_lower, json.dumps(normalized)),
+        )
+
+
 def db_counts() -> dict[str, int]:
     """Row counts — proves the stored data is queryable."""
     with psycopg.connect(DATABASE_URL) as conn:

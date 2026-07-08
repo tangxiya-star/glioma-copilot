@@ -113,6 +113,15 @@ type SummaryResp = {
   note: { note?: string; discussion_points?: string[] };
 };
 
+type DrugNorm = {
+  input: string;
+  rxcui: string | null;
+  ingredient: string | null;
+  chembl_id: string | null;
+  mechanisms: { mechanism_of_action: string; action_type?: string }[];
+  sources: { rxnorm?: string | null; chembl?: string | null };
+};
+
 type Draft = { assessment: string; claims: { claim: string; citation: string }[] };
 type VerifyEntry = {
   claim: string;
@@ -168,6 +177,9 @@ export default function Home() {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [summary, setSummary] = useState<SummaryResp | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  // Drug normalization (RxNorm + ChEMBL) of the report's prior therapies.
+  const [drugs, setDrugs] = useState<DrugNorm[] | null>(null);
+  const [drugsLoading, setDrugsLoading] = useState(false);
 
   useEffect(() => {
     // Pull all synthetic cases ONCE (reports inline) — switching is then instant.
@@ -195,6 +207,7 @@ export default function Home() {
     setPool(null);
     setExplain(null);
     setSummary(null);
+    setDrugs(null);
     setMatchedCondition("");
     setReport(list.find((p) => p.id === id)?.report ?? "");
   }
@@ -222,8 +235,28 @@ export default function Home() {
       // the FULL recruiting pool (Stage 0), screens all of it (Stage 1), and
       // deep-fits the top clear candidates (Stage 2).
       runTriage(cond);
+      // Ground the report's prior therapies in RxNorm + ChEMBL (parallel).
+      runDrugs(report);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Normalize the report's prior-therapy drug names via RxNorm + ChEMBL.
+  async function runDrugs(reportText: string) {
+    setDrugsLoading(true);
+    setDrugs(null);
+    try {
+      const r = await fetch(`${API_URL}/api/drugs/from_patient`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report: reportText }),
+      });
+      setDrugs((await r.json()).drugs ?? []);
+    } catch {
+      setDrugs([]);
+    } finally {
+      setDrugsLoading(false);
     }
   }
 
@@ -551,6 +584,48 @@ export default function Home() {
                   ⚠ {c.reclassification_note}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Prior therapies normalized via RxNorm + ChEMBL (authoritative identity). */}
+          {(drugsLoading || (drugs && drugs.length > 0)) && (
+            <div className="rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/20 p-4 space-y-2">
+              <p className="text-xs uppercase tracking-wide text-teal-600">
+                Prior therapies · normalized (RxNorm + ChEMBL)
+              </p>
+              {drugsLoading && !drugs && (
+                <p className="text-sm text-neutral-500 animate-pulse">Normalizing drug names…</p>
+              )}
+              <ul className="space-y-2">
+                {drugs?.map((d, i) => (
+                  <li key={i} className="text-sm">
+                    <span className="text-neutral-500">{d.input}</span>
+                    <span className="mx-1 text-neutral-400">→</span>
+                    <span className="font-medium">{d.ingredient ?? "unresolved"}</span>
+                    {d.mechanisms[0]?.mechanism_of_action && (
+                      <span className="ml-2 rounded-full border border-teal-400/60 px-2 py-0.5 text-[11px] text-teal-700 dark:text-teal-300">
+                        {d.mechanisms[0].mechanism_of_action}
+                      </span>
+                    )}
+                    <span className="block text-[11px] text-neutral-400 mt-0.5 space-x-2">
+                      {d.sources.rxnorm && (
+                        <a href={d.sources.rxnorm} target="_blank" rel="noreferrer" className="hover:underline">
+                          RxCUI {d.rxcui} ↗
+                        </a>
+                      )}
+                      {d.sources.chembl && (
+                        <a href={d.sources.chembl} target="_blank" rel="noreferrer" className="hover:underline">
+                          {d.chembl_id} ↗
+                        </a>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] text-neutral-400">
+                Claude names the drug; RxNorm + ChEMBL resolve identity & mechanism — grounding
+                drug identity in an authoritative source.
+              </p>
             </div>
           )}
         </section>
