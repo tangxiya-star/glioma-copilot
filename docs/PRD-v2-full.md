@@ -38,6 +38,19 @@ The bottleneck is **not** finding trials (clinicians and coordinators largely kn
 - Patient preferences are often discussed verbally but not captured in a structured way.
 - Doctors must translate complex trial language into understandable explanations during emotionally difficult conversations.
 
+### 4.1 Why existing trial-matching tools don't close this gap
+
+Clinicians already have trial *matchers* — ClinicalTrials.gov advanced search, genomic matchers (e.g. MatchMiner), and patient-facing services (TrialJectory, Leal Health). They are good at **discovery**: filter by a few **structured** fields (condition, a biomarker like IDH, phase, location) and return a candidate list. We deliberately **do not compete on discovery** — we even take the candidate pool exhaustively (§11.3) and call it scoping, not matching.
+
+The gap those tools leave is the **"last mile" the clinician still does by hand** after the list appears:
+
+1. **Full per-criterion eligibility, not 1–3 structured fields.** A filter matches on the handful of fields that happen to be structured; real eligibility is 15–30 criteria (prior therapy, washout, measurable disease, prior bevacizumab, performance status, labs…), and on ClinicalTrials.gov most of it lives in **free-text** the filter never reads. Example: a filter says an IDH-wildtype GBM patient "matches" recruiting GBM trials — but many **exclude prior bevacizumab**, a fact that lives in the clinical narrative, not a filter field, so the match is **false**. Verifying the other 20 criteria against this patient is manual, slow, and error-prone.
+2. **What's *missing / unknown*, as an actionable next step.** Filters give binary match/no-match on what they know; they don't say "you look eligible **except** EGFR is untested and this trial requires it — order that test." That gap between *looks eligible on structured fields* and *actually eligible pending X* is where wrong referrals and wasted work happen.
+3. **Catching over-claims (safety/honesty).** An LLM matcher may simply assert "eligible." Nothing checks whether that is grounded in the record; when a decisive criterion is actually *unknown*, an over-confident "eligible" is a clinical-safety problem.
+4. **Doctor→patient shared decision.** Matchers output a clinician-facing list. They don't render it in plain language, capture preferences (travel, quality-of-life, phase wariness), or produce a shared-decision note.
+
+**So the gap we fill is everything *after* the match list:** read the whole record against the whole eligibility (incl. free text) with per-criterion citations, surface what's unknown/missing, self-check to catch over-claims, then translate to plain language and support a preference-aware shared decision. From *"these trials may be relevant"* → *"why this one may or may not fit **this** patient, what's still missing, and how you two decide."*
+
 This creates a gap between:
 
 1. Evidence review & trial fit assessment  
