@@ -51,6 +51,21 @@ The gap those tools leave is the **"last mile" the clinician still does by hand*
 
 **So the gap we fill is everything *after* the match list:** read the whole record against the whole eligibility (incl. free text) with per-criterion citations, surface what's unknown/missing, self-check to catch over-claims, then translate to plain language and support a preference-aware shared decision. From *"these trials may be relevant"* → *"why this one may or may not fit **this** patient, what's still missing, and how you two decide."*
 
+#### 4.1.1 Why not just a deterministic rule engine (if-statements)?
+
+The obvious objection: age, KPS, biomarkers are fixed values — why not parse the thresholds and run `if patient.kps >= trial.min_kps`? A rule engine *would* be better where it applies (faster, cheaper, auditable), and we **do** use it there — the Stage-1 pre-screen (§11.3) is pure deterministic code, no LLM, for the reliably-structured, high-frequency patterns (IDH type, 1p/19q, prior-drug **class** via ChEMBL mechanism).
+
+The reason hospitals have **not** solved trial matching with a rule engine — and still do it by hand — is that a deterministic `if` needs **structured inputs on both sides, and neither side is structured**:
+
+- **Trial side:** ClinicalTrials.gov stores eligibility as one **free-text blob** — there is no `min_kps` / `max_age` / `required_biomarker` field. The same threshold is written 100 ways ("KPS ≥ 60", "ECOG 0–1" — a *different scale*, "ambulatory and able to care for self" — vague), plus inherently fuzzy criteria ("adequate organ function", "life expectancy > 12 weeks", "recovered from prior therapy") and negation/compound logic ("no prior bevacizumab **unless** > 6 months ago"). To run an `if`, someone must first hand-encode each trial into rules — unsustainable across ~460k trials that keep changing.
+- **Patient side:** the decisive facts (recurrence, prior therapy, resection, symptoms) live in **free-text EHR notes**, not clean fields.
+
+So pre-LLM the blocker was never the *comparison* (the `if` is trivial) — it was the **two extraction steps** (trial prose → predicates; chart prose → facts), which were intractable at scale. Because extraction was unsolved, matching **stayed manual** — a clinician reads both texts and checks criteria by hand. **The persistent manual workflow is itself the proof that a rule engine doesn't scale here; this is an LLM-shaped problem.**
+
+Corroboration: genomic matchers (MatchMiner) work precisely because they match on **1–2 structured genomic fields** (machine-readable from a sequencing pipeline) and deliberately **avoid the free-text eligibility** — the same "biomarker list vs. eligibility" gap. Rule/structured attempts at full matching (e.g. IBM Watson for Oncology) failed to scale for exactly this reason.
+
+**Why an LLM is the enabling (not gratuitous) choice:** it reads the free text on *both* sides and produces a per-criterion judgment **with citations** without pre-structuring either side — collapsing the extraction barrier that killed rule engines. We keep the hybrid: deterministic `if` for the cleanly-structured slice (pre-screen), cited LLM per-criterion fit for the long, messy, vague tail — and a verification agent to catch the LLM's own over-claims (§11.4), since an LLM's convenience comes with a hallucination risk a rule engine doesn't have.
+
 This creates a gap between:
 
 1. Evidence review & trial fit assessment  
