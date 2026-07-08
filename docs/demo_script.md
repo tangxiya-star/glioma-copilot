@@ -33,6 +33,11 @@ prettier trial search.
   GDC — for the same patient. Click the card and you land on that exact case. All four
   demo cases are patients recorded **alive**. Trials are **live from ClinicalTrials.gov**."
 - Point at the green card: cBioPortal sample link + **GDC prior-therapy** link + marker chips.
+- **Live-analysis proof (optional, strong):** in the sidebar "Load live case", type *any* real
+  de-identified TCGA glioma barcode (or click a suggested one) → the app fetches that patient's
+  molecular (cBioPortal) + treatment/clinical (GDC) **at request time** and runs the whole
+  pipeline. Say: "Don't trust my preset cases — give me any real TCGA barcode and watch it
+  classify and screen every trial live." (Survival is never fetched or shown.)
 
 ---
 

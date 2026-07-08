@@ -187,6 +187,10 @@ export default function Home() {
   const [drugsLoading, setDrugsLoading] = useState(false);
   // Two-step flow: clinician review (evidence only) → shared decision (with patient).
   const [view, setView] = useState<"clinician" | "shared">("clinician");
+  // Live case loader (real TCGA barcode → cBioPortal + GDC, at request time).
+  const [barcode, setBarcode] = useState("");
+  const [tcgaLoading, setTcgaLoading] = useState(false);
+  const [tcgaError, setTcgaError] = useState("");
 
   useEffect(() => {
     // Pull all synthetic cases ONCE (reports inline) — switching is then instant.
@@ -218,6 +222,36 @@ export default function Home() {
     setView("clinician");
     setMatchedCondition("");
     setReport(list.find((p) => p.id === id)?.report ?? "");
+  }
+
+  // Live-load a real de-identified TCGA case (cBioPortal + GDC, at request time),
+  // add it to the case list, and select it. Proves real-time analysis on real data.
+  async function loadTcga(bc: string) {
+    const b = bc.trim();
+    if (!b) return;
+    setTcgaLoading(true);
+    setTcgaError("");
+    try {
+      const r = await fetch(`${API_URL}/api/case/from_tcga`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: b }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setTcgaError(d.detail || `Could not load ${b}`);
+        return;
+      }
+      const c: Patient = await r.json();
+      const merged = [...cases.filter((p) => p.id !== c.id), c];
+      setCases(merged);
+      setBarcode("");
+      loadCase(c.id, merged);
+    } catch {
+      setTcgaError("Network error loading the case");
+    } finally {
+      setTcgaLoading(false);
+    }
   }
 
   async function analyze() {
@@ -547,6 +581,43 @@ export default function Home() {
                 </button>
               );
             })}
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Load live case
+            </p>
+            <div className="flex gap-1">
+              <input
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && loadTcga(barcode)}
+                placeholder="TCGA barcode"
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2 py-1.5 text-xs"
+              />
+              <button
+                onClick={() => loadTcga(barcode)}
+                disabled={tcgaLoading || !barcode.trim()}
+                className={`${PRIMARY} px-2.5 py-1.5 text-xs`}
+              >
+                {tcgaLoading ? "…" : "Load"}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {["TCGA-06-6700", "TCGA-14-1450"].map((id) => (
+                <button
+                  key={id}
+                  onClick={() => loadTcga(id)}
+                  className="rounded-full border border-slate-200 dark:border-neutral-800 px-2 py-0.5 text-[10px] text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+                >
+                  {id}
+                </button>
+              ))}
+            </div>
+            <p className="px-1 text-[10px] leading-snug text-slate-400">
+              Any real de-identified TCGA glioma barcode → fetched live from cBioPortal + GDC.
+            </p>
+            {tcgaError && <p className="px-1 text-[10px] text-red-500">{tcgaError}</p>}
           </div>
 
           <div className="space-y-1.5">

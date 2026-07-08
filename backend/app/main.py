@@ -31,8 +31,9 @@ from .db import (
     upsert_trials,
 )
 from .drugs import normalize_drug
-from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient
+from .patient import SYNTHETIC_PATIENT, SYNTHETIC_PATIENTS, get_patient, register_patient
 from .prescreen import drug_signals, patient_screen_facts, screen_trial
+from .tcga import build_case_from_tcga
 from .trials import fetch_all_recruiting, fetch_glioma_trials, fetch_trial
 
 app = FastAPI(title="Glioma Copilot API", version="0.1.0")
@@ -883,6 +884,28 @@ _DRUG_EXTRACT_SYSTEM = (
     "one canonical token each — no doses, no regimen names. Return STRICT JSON only:\n"
     '{"drugs": ["temozolomide", "bevacizumab"]}'
 )
+
+
+class TcgaRequest(BaseModel):
+    barcode: str
+
+
+@app.post("/api/case/from_tcga")
+def case_from_tcga(req: TcgaRequest):
+    """Live-load a case from a real de-identified TCGA barcode (cBioPortal + GDC).
+
+    Proves real-time analysis on real data: a reviewer drops in any TCGA glioma
+    barcode and the whole pipeline runs on it. Survival is never fetched/shown.
+    """
+    try:
+        case = build_case_from_tcga(req.barcode)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"TCGA fetch error: {e}")
+    register_patient(case)  # so fit/triage/review/drugs can look it up by id
+    return {"id": case["id"], "label": case["label"], "report": case["report"],
+            "provenance": case["provenance"]}
 
 
 @app.post("/api/drugs/from_patient")

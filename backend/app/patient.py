@@ -293,3 +293,10 @@ def get_patient(patient_id: str | None):
     if patient_id and patient_id in _BY_ID:
         return _BY_ID[patient_id]
     return SYNTHETIC_PATIENT
+
+
+def register_patient(case: dict) -> dict:
+    """Register a live-loaded case in the in-memory store so downstream analysis
+    (fit / triage / review / drugs) can look it up by id. Transient (per process)."""
+    _BY_ID[case["id"]] = case
+    return case
