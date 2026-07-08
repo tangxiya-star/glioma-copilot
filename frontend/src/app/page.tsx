@@ -185,8 +185,8 @@ export default function Home() {
   // Drug normalization (RxNorm + ChEMBL) of the report's prior therapies.
   const [drugs, setDrugs] = useState<DrugNorm[] | null>(null);
   const [drugsLoading, setDrugsLoading] = useState(false);
-  // Two-step flow: clinician review (evidence only) → shared decision (with patient).
-  const [view, setView] = useState<"clinician" | "shared">("clinician");
+  // Landing on the Patient panel (roster); pick a patient → clinician review → shared.
+  const [view, setView] = useState<"panel" | "clinician" | "shared">("panel");
   // Live case loader (real TCGA barcode → cBioPortal + GDC, at request time).
   const [barcode, setBarcode] = useState("");
   const [tcgaLoading, setTcgaLoading] = useState(false);
@@ -219,9 +219,14 @@ export default function Home() {
     setExplain(null);
     setSummary(null);
     setDrugs(null);
-    setView("clinician");
     setMatchedCondition("");
     setReport(list.find((p) => p.id === id)?.report ?? "");
+  }
+
+  // Open a patient from the panel/sidebar into the analysis flow.
+  function openPatient(id: string) {
+    loadCase(id);
+    setView("clinician");
   }
 
   // Live-load a real de-identified TCGA case (cBioPortal + GDC, at request time),
@@ -247,6 +252,7 @@ export default function Home() {
       setCases(merged);
       setBarcode("");
       loadCase(c.id, merged);
+      setView("clinician");
     } catch {
       setTcgaError("Network error loading the case");
     } finally {
@@ -558,7 +564,7 @@ export default function Home() {
               return (
                 <button
                   key={p.id}
-                  onClick={() => loadCase(p.id)}
+                  onClick={() => openPatient(p.id)}
                   className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition ${
                     active
                       ? "bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-indigo-200 dark:ring-indigo-900"
@@ -624,6 +630,19 @@ export default function Home() {
             <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Workflow
             </p>
+            <button
+              onClick={() => setView("panel")}
+              className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition ${
+                view === "panel"
+                  ? "bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-indigo-200 dark:ring-indigo-900"
+                  : "hover:bg-slate-50 dark:hover:bg-neutral-800/50"
+              }`}
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-neutral-800 text-sm">
+                📋
+              </span>
+              <span className="text-sm font-medium">Patient panel</span>
+            </button>
             <StepButton active={view === "clinician"} onClick={() => setView("clinician")} n="1" label="Clinician review" />
             <StepButton
               active={view === "shared"}
@@ -642,27 +661,95 @@ export default function Home() {
           <div className={`${CARD} flex flex-wrap items-center gap-3 px-5 py-3.5`}>
             <div className="min-w-0">
               <p className="text-lg font-bold">
-                {c ? c.diagnosis : `Case ${caseId.replace("case-", "")}`}
-                {c && (
+                {view === "panel"
+                  ? "Patient panel"
+                  : c
+                  ? c.diagnosis
+                  : `Case ${caseId.replace("case-", "")}`}
+                {view !== "panel" && c && (
                   <span className="ml-2 text-sm font-normal text-slate-400">
                     {c.grade != null ? `grade ${c.grade}` : "grade pending"}
                   </span>
                 )}
               </p>
               <p className="text-xs text-slate-400">
-                {view === "clinician"
+                {view === "panel"
+                  ? `${cases.length} patients · real de-identified TCGA (cBioPortal + GDC) — pick one to analyze`
+                  : view === "clinician"
                   ? "Clinician review — report → classification → trial fit, every step cited"
                   : "Shared decision — preferences re-weight the assessed options (for discussion)"}
               </p>
             </div>
-            <button
-              onClick={analyze}
-              disabled={loading || !report}
-              className={`${PRIMARY} ml-auto px-5 py-2 text-sm`}
-            >
-              {loading ? "Analyzing…" : "⚡ Analyze"}
-            </button>
+            {view !== "panel" && (
+              <button
+                onClick={analyze}
+                disabled={loading || !report}
+                className={`${PRIMARY} ml-auto px-5 py-2 text-sm`}
+              >
+                {loading ? "Analyzing…" : "⚡ Analyze"}
+              </button>
+            )}
           </div>
+
+          {/* Patient panel — Excel-like roster of real patients */}
+          {view === "panel" && (
+            <div className={`${CARD} overflow-x-auto`}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-neutral-800 text-left text-xs text-slate-400">
+                    <th className="py-3 pl-5 pr-3 font-medium">Patient</th>
+                    <th className="py-3 pr-3 font-medium">Age / Sex</th>
+                    <th className="py-3 pr-3 font-medium">Diagnosis</th>
+                    <th className="py-3 pr-3 font-medium">IDH</th>
+                    <th className="py-3 pr-3 font-medium">1p/19q</th>
+                    <th className="py-3 pr-3 font-medium">MGMT</th>
+                    <th className="py-3 pr-3 font-medium">ATRX</th>
+                    <th className="py-3 pr-3 font-medium">Grade</th>
+                    <th className="py-3 pr-3 font-medium">Prior therapy</th>
+                    <th className="py-3 pr-5 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cases.map((p) => {
+                    const m = p.provenance?.markers ?? {};
+                    const tx = (p.provenance?.treatment?.agents ?? [])
+                      .filter((a) => !/radiation|nos/i.test(a))
+                      .join(", ");
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => openPatient(p.id)}
+                        className="cursor-pointer border-b border-slate-100 dark:border-neutral-900 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20"
+                      >
+                        <td className="py-3 pl-5 pr-3">
+                          <span className="font-mono text-xs text-slate-500">
+                            {m.sample_id ?? p.provenance?.sample_id ?? p.id}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-3 whitespace-nowrap">
+                          {m.AGE ?? "?"} / {m.SEX ?? "?"}
+                        </td>
+                        <td className="py-3 pr-3">{(m.HISTOLOGICAL_DIAGNOSIS ?? "").split("(")[0]}</td>
+                        <td className="py-3 pr-3">{m.IDH_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-3">{m.IDH_CODEL_SUBTYPE ?? "—"}</td>
+                        <td className="py-3 pr-3">{m.MGMT_PROMOTER_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-3">{m.ATRX_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-3">{m.GRADE ?? "—"}</td>
+                        <td className="py-3 pr-3 text-xs text-slate-500">{tx || "—"}</td>
+                        <td className="py-3 pr-5 text-right">
+                          <span className="text-xs font-medium text-indigo-600">Analyze →</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="px-5 py-3 text-[11px] text-slate-400">
+                Real de-identified TCGA patients (all recorded alive) — molecular from cBioPortal,
+                treatment from NIH GDC. Click a row to analyze that patient. Survival is never shown.
+              </p>
+            </div>
+          )}
 
           {/* Stat tiles */}
           {view === "clinician" && (result || pool) && (

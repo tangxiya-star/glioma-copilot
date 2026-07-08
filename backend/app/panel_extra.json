@@ -1,0 +1,152 @@
+[
+ {
+  "id": "live-TCGA-06-6700",
+  "label": "Live \u00b7 TCGA-06-6700 \u2014 glioblastoma G4 (TCGA-06-6700-01)",
+  "provenance": {
+   "sample_id": "TCGA-06-6700-01",
+   "study": "lgggbm_tcga_pub",
+   "study_name": "Merged Cohort of LGG and GBM \u2014 TCGA, Cell 2016 (Ceccarelli et al.)",
+   "pmid": "26824661",
+   "url": "https://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-06-6700",
+   "markers": {
+    "IDH_STATUS": "WT",
+    "IDH_CODEL_SUBTYPE": "IDHwt",
+    "MGMT_PROMOTER_STATUS": "Methylated",
+    "ATRX_STATUS": "WT",
+    "GRADE": "G4",
+    "AGE": "76",
+    "SEX": "Male",
+    "HISTOLOGICAL_DIAGNOSIS": "glioblastoma",
+    "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"
+   },
+   "treatment": {
+    "source": "NIH GDC (portal.gdc.cancer.gov) \u2014 TCGA clinical",
+    "url": "https://portal.gdc.cancer.gov/cases/3dddfc44-7bb1-4974-8a65-a84fd4bac484",
+    "agents": [
+     "radiation, external beam",
+     "temozolomide",
+     "vandetanib"
+    ]
+   }
+  },
+  "clinical": {
+   "recurrent": false,
+   "prior_bevacizumab": false
+  },
+  "report": "INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT \u2014 LIVE from TCGA\n(fetched at request time; REAL de-identified data \u2014 molecular via cBioPortal, treatment via NIH GDC)\n\nMOLECULAR SOURCE: TCGA-06-6700-01 \u00b7 cBioPortal lgggbm_tcga_pub (TCGA, Cell 2016; PMID 26824661).\nhttps://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-06-6700\nTREATMENT SOURCE: NIH GDC \u2014 same TCGA case. https://portal.gdc.cancer.gov/cases/3dddfc44-7bb1-4974-8a65-a84fd4bac484\n\nPATIENT / SPECIMEN\n- Patient: 76-year-old male (from the TCGA sample).\n- Histologic diagnosis (TCGA): glioblastoma.\n\nCLINICAL  [REAL \u2014 cBioPortal + GDC]\n- Primary diagnosis (GDC): Glioblastoma\n- Tumor site (GDC): Brain, NOS\n- Performance status: KPS 100\n- Prior malignancy (GDC): no\n\nPRIOR THERAPY  [REAL \u2014 GDC record]\n    - radiation, external beam\n    - temozolomide\n    - vandetanib\n\nMICROSCOPIC DESCRIPTION  [illustrative of the TCGA grade / histology label]\nDiffuse glioma with brisk mitotic activity, MICROVASCULAR PROLIFERATION and NECROSIS.\n\nMOLECULAR / GENOMIC  [REAL \u2014 TCGA whole-exome + array calls]\n    - IDH: WILD-TYPE\n    - 1p/19q: IDHwt\n    - MGMT promoter: Methylated\n    - ATRX: WT\n    - Grade (TCGA): G4\n    - Variant calls: none reported in IDH1/ATRX/TERT/EGFR/TP53 panel\n",
+  "live": true
+ },
+ {
+  "id": "live-TCGA-14-1450",
+  "label": "Live \u00b7 TCGA-14-1450 \u2014 glioblastoma G4 (TCGA-14-1450-01)",
+  "provenance": {
+   "sample_id": "TCGA-14-1450-01",
+   "study": "lgggbm_tcga_pub",
+   "study_name": "Merged Cohort of LGG and GBM \u2014 TCGA, Cell 2016 (Ceccarelli et al.)",
+   "pmid": "26824661",
+   "url": "https://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-14-1450",
+   "markers": {
+    "IDH_STATUS": "WT",
+    "IDH_CODEL_SUBTYPE": "IDHwt",
+    "MGMT_PROMOTER_STATUS": "Methylated",
+    "ATRX_STATUS": "WT",
+    "GRADE": "G4",
+    "AGE": "57",
+    "SEX": "Female",
+    "HISTOLOGICAL_DIAGNOSIS": "glioblastoma",
+    "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"
+   },
+   "treatment": {
+    "source": "NIH GDC (portal.gdc.cancer.gov) \u2014 TCGA clinical",
+    "url": "https://portal.gdc.cancer.gov/cases/f2ec3b94-cb92-4335-bdf9-02c046130bab",
+    "agents": [
+     "bevacizumab",
+     "dexamethasone",
+     "pharmaceutical therapy, nos",
+     "radiation, external beam",
+     "temozolomide"
+    ]
+   }
+  },
+  "clinical": {
+   "recurrent": false,
+   "prior_bevacizumab": true
+  },
+  "report": "INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT \u2014 LIVE from TCGA\n(fetched at request time; REAL de-identified data \u2014 molecular via cBioPortal, treatment via NIH GDC)\n\nMOLECULAR SOURCE: TCGA-14-1450-01 \u00b7 cBioPortal lgggbm_tcga_pub (TCGA, Cell 2016; PMID 26824661).\nhttps://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-14-1450\nTREATMENT SOURCE: NIH GDC \u2014 same TCGA case. https://portal.gdc.cancer.gov/cases/f2ec3b94-cb92-4335-bdf9-02c046130bab\n\nPATIENT / SPECIMEN\n- Patient: 57-year-old female (from the TCGA sample).\n- Histologic diagnosis (TCGA): glioblastoma.\n\nCLINICAL  [REAL \u2014 cBioPortal + GDC]\n- Primary diagnosis (GDC): Glioblastoma\n- Tumor site (GDC): Not Reported\n- Performance status: KPS 80\n\nPRIOR THERAPY  [REAL \u2014 GDC record]\n    - bevacizumab\n    - dexamethasone\n    - pharmaceutical therapy, nos\n    - radiation, external beam\n    - temozolomide\n\nMICROSCOPIC DESCRIPTION  [illustrative of the TCGA grade / histology label]\nDiffuse glioma with brisk mitotic activity, MICROVASCULAR PROLIFERATION and NECROSIS.\n\nMOLECULAR / GENOMIC  [REAL \u2014 TCGA whole-exome + array calls]\n    - IDH: WILD-TYPE\n    - 1p/19q: IDHwt\n    - MGMT promoter: Methylated\n    - ATRX: WT\n    - Grade (TCGA): G4\n    - Variant calls: none reported in IDH1/ATRX/TERT/EGFR/TP53 panel\n",
+  "live": true
+ },
+ {
+  "id": "live-TCGA-CS-6668",
+  "label": "Live \u00b7 TCGA-CS-6668 \u2014 oligodendroglioma G2 (TCGA-CS-6668-01)",
+  "provenance": {
+   "sample_id": "TCGA-CS-6668-01",
+   "study": "lgggbm_tcga_pub",
+   "study_name": "Merged Cohort of LGG and GBM \u2014 TCGA, Cell 2016 (Ceccarelli et al.)",
+   "pmid": "26824661",
+   "url": "https://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-CS-6668",
+   "markers": {
+    "IDH_STATUS": "Mutant",
+    "IDH_CODEL_SUBTYPE": "IDHmut-codel",
+    "MGMT_PROMOTER_STATUS": "Methylated",
+    "TERT_PROMOTER_STATUS": "Mutant",
+    "ATRX_STATUS": "WT",
+    "GRADE": "G2",
+    "AGE": "57",
+    "SEX": "Female",
+    "HISTOLOGICAL_DIAGNOSIS": "oligodendroglioma",
+    "mutations": "IDH1 R132H"
+   },
+   "treatment": {
+    "source": "NIH GDC (portal.gdc.cancer.gov) \u2014 TCGA clinical",
+    "url": "https://portal.gdc.cancer.gov/cases/a5d3f3fb-6541-419d-b47e-720d438f1bff",
+    "agents": [
+     "temozolomide"
+    ]
+   }
+  },
+  "clinical": {
+   "recurrent": false,
+   "prior_bevacizumab": false
+  },
+  "report": "INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT \u2014 LIVE from TCGA\n(fetched at request time; REAL de-identified data \u2014 molecular via cBioPortal, treatment via NIH GDC)\n\nMOLECULAR SOURCE: TCGA-CS-6668-01 \u00b7 cBioPortal lgggbm_tcga_pub (TCGA, Cell 2016; PMID 26824661).\nhttps://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-CS-6668\nTREATMENT SOURCE: NIH GDC \u2014 same TCGA case. https://portal.gdc.cancer.gov/cases/a5d3f3fb-6541-419d-b47e-720d438f1bff\n\nPATIENT / SPECIMEN\n- Patient: 57-year-old female (from the TCGA sample).\n- Histologic diagnosis (TCGA): oligodendroglioma.\n\nCLINICAL  [REAL \u2014 cBioPortal + GDC]\n- Primary diagnosis (GDC): Oligodendroglioma, NOS\n- Tumor site (GDC): Nervous system, NOS\n- Performance status: KPS 90\n- Prior malignancy (GDC): no\n\nPRIOR THERAPY  [REAL \u2014 GDC record]\n    - temozolomide\n\nMICROSCOPIC DESCRIPTION  [illustrative of the TCGA grade / histology label]\nDiffuse glioma; see molecular findings below.\n\nMOLECULAR / GENOMIC  [REAL \u2014 TCGA whole-exome + array calls]\n    - IDH: MUTANT\n    - 1p/19q: IDHmut-codel\n    - MGMT promoter: Methylated\n    - TERT promoter: Mutant\n    - ATRX: WT\n    - Grade (TCGA): G2\n    - Variant calls: IDH1 R132H\n",
+  "live": true
+ },
+ {
+  "id": "live-TCGA-DB-5273",
+  "label": "Live \u00b7 TCGA-DB-5273 \u2014 astrocytoma G3 (TCGA-DB-5273-01)",
+  "provenance": {
+   "sample_id": "TCGA-DB-5273-01",
+   "study": "lgggbm_tcga_pub",
+   "study_name": "Merged Cohort of LGG and GBM \u2014 TCGA, Cell 2016 (Ceccarelli et al.)",
+   "pmid": "26824661",
+   "url": "https://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-DB-5273",
+   "markers": {
+    "IDH_STATUS": "Mutant",
+    "IDH_CODEL_SUBTYPE": "IDHmut-non-codel",
+    "MGMT_PROMOTER_STATUS": "Unmethylated",
+    "TERT_PROMOTER_STATUS": "WT",
+    "ATRX_STATUS": "Mutant",
+    "GRADE": "G3",
+    "AGE": "33",
+    "SEX": "Male",
+    "HISTOLOGICAL_DIAGNOSIS": "astrocytoma",
+    "mutations": "ATRX Q262*, IDH1 R132H, TP53 R273H"
+   },
+   "treatment": {
+    "source": "NIH GDC (portal.gdc.cancer.gov) \u2014 TCGA clinical",
+    "url": "https://portal.gdc.cancer.gov/cases/ae2db022-eb4f-4b65-89b6-9fd4439ddeef",
+    "agents": [
+     "antiseizure treatment",
+     "radiation, external beam",
+     "temozolomide"
+    ]
+   }
+  },
+  "clinical": {
+   "recurrent": false,
+   "prior_bevacizumab": false
+  },
+  "report": "INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT \u2014 LIVE from TCGA\n(fetched at request time; REAL de-identified data \u2014 molecular via cBioPortal, treatment via NIH GDC)\n\nMOLECULAR SOURCE: TCGA-DB-5273-01 \u00b7 cBioPortal lgggbm_tcga_pub (TCGA, Cell 2016; PMID 26824661).\nhttps://www.cbioportal.org/patient?studyId=lgggbm_tcga_pub&caseId=TCGA-DB-5273\nTREATMENT SOURCE: NIH GDC \u2014 same TCGA case. https://portal.gdc.cancer.gov/cases/ae2db022-eb4f-4b65-89b6-9fd4439ddeef\n\nPATIENT / SPECIMEN\n- Patient: 33-year-old male (from the TCGA sample).\n- Histologic diagnosis (TCGA): astrocytoma.\n\nCLINICAL  [REAL \u2014 cBioPortal + GDC]\n- Primary diagnosis (GDC): Astrocytoma, anaplastic\n- Tumor site (GDC): Nervous system, NOS\n- Prior malignancy (GDC): no\n\nPRIOR THERAPY  [REAL \u2014 GDC record]\n    - antiseizure treatment\n    - radiation, external beam\n    - temozolomide\n\nMICROSCOPIC DESCRIPTION  [illustrative of the TCGA grade / histology label]\nDiffuse glioma; see molecular findings below.\n\nMOLECULAR / GENOMIC  [REAL \u2014 TCGA whole-exome + array calls]\n    - IDH: MUTANT\n    - 1p/19q: IDHmut-non-codel\n    - MGMT promoter: Unmethylated\n    - TERT promoter: WT\n    - ATRX: Mutant\n    - Grade (TCGA): G3\n    - Variant calls: ATRX Q262*, IDH1 R132H, TP53 R273H\n",
+  "live": true
+ }
+]
