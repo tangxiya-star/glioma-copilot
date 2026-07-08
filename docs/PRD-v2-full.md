@@ -261,6 +261,59 @@ Stores connected data for:
 
 How the candidate set is assembled and ordered — the step before per-trial review. The design goal is deliberately **not** "find THE single best trial" (that is a clinician + patient-preference judgment and would cross the autonomous-recommendation line). It is: **miss nothing, assess broadly, order transparently, let the clinician decide.** A three-stage pipeline, every stage deterministic or cited — no AI relevance ranking anywhere in retrieval.
 
+```
+                          PATIENT
+             WHO CNS5 dx  +  structured molecular facts
+             (tumor type)    (IDH, 1p/19q, prior tx…)
+                    │                    │
+   ─────────────────┼──── STAGE 0: EXHAUSTIVE RETRIEVAL ───────────
+                    ▼
+        ClinicalTrials.gov v2  ·  query = tumor type + RECRUITING
+        pull EVERY match, paginated  (e.g. glioblastoma → 326)
+        reasoning: pool is finite & bounded → take ALL of it,
+                   so a trial buried at #50 is never missed.
+                    │
+                    ▼   full pool  P  (all N trials)
+   ───────────── STAGE 1: DETERMINISTIC PRE-SCREEN (no AI) ─────────
+        for each trial in P:
+            split eligibility → [ Inclusion | Exclusion ]
+                    │
+                    ▼
+            HARD CONFLICT with patient facts?
+            ├─ Inclusion requires IDH-mutant   & patient IDH-wt   → YES
+            ├─ Inclusion requires 1p/19q-codel & patient intact   → YES
+            ├─ Exclusion bars prior bevacizumab & patient had it  → YES
+            └─ otherwise                                          → NO
+                    │                         │
+              YES → FLAGGED                NO → CLEAR
+              (deprioritize,               (eligible for deep
+               reason attached,             assessment)
+               NEVER hidden)
+                    │                         │
+                    └───────────┬─────────────┘
+                                ▼   ranked: CLEAR first, FLAGGED last
+   ───────────── STAGE 2: PER-CRITERION FIT (Claude, cited) ────────
+        take top N screen-CLEAR  (N≈4, capped for cost)
+        for each: judge every criterion → met / not_met / unknown
+                  (cite exact eligibility line)
+                    │
+                    ▼   badge  ✅met ❓unknown ❌not_met
+            triage signal:  not_met>0 → conflict
+                            unknown>0 → needs_workup
+                            else      → looks_eligible
+                    │
+   ───────────────── FINAL ORDERING (shown to clinician) ──────────
+        [ deep-assessed CLEAR, by fit ]   ← fewest conflicts, then unknowns
+        [ remaining CLEAR pool         ]
+        [ FLAGGED (dimmed + reasons)   ]   ← still listed, still openable
+        label: "deep-assessed N of <total>"   (no silent cap)
+                    │
+                    ▼
+        CLINICIAN reviews / overrides / opens any trial → 3-agent verify
+        (system never says "this is THE best trial")
+```
+
+
 ### 11.3.1 Stage 0 — Exhaustive candidate retrieval (no top-N slice)
 
 The candidate pool is scoped by the patient's **tumor type** (derived deterministically from the WHO CNS5 diagnosis: glioblastoma / astrocytoma / oligodendroglioma / glioma) and status **RECRUITING**, then pulled **exhaustively** from the live ClinicalTrials.gov v2 API — every matching trial, paginated, not a top-N slice. (E.g. "glioblastoma, recruiting" ≈ 326 trials at time of writing.)
