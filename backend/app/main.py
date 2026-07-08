@@ -495,7 +495,8 @@ def triage_stream(req: TriageRequest):
             "flagged": flagged_n,
             "trials": [
                 {"nct_id": t["nct_id"], "title": t["title"], "url": t["url"],
-                 "locations": t["locations"], "screen": sc}
+                 "locations": t["locations"], "phases": t.get("phases", []),
+                 "states": t.get("states", []), "screen": sc}
                 for t, sc in screened
             ],
         }) + "\n"
@@ -509,7 +510,8 @@ def triage_stream(req: TriageRequest):
         deep = [t for t in clear if t.get("eligibility")][:n]
         for t in deep:
             meta = {"nct_id": t["nct_id"], "title": t["title"],
-                    "url": t["url"], "locations": t["locations"]}
+                    "url": t["url"], "locations": t["locations"],
+                    "phases": t.get("phases", []), "states": t.get("states", [])}
             try:
                 items = _compute_fit_items(patient, t)
             except Exception as e:
@@ -658,3 +660,164 @@ def review_stream(req: FitRequest):
         yield json.dumps({"type": "done"}) + "\n"
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
+# --- Day 5: shared-decision workspace (plain-language + preferences + summary) ---
+
+_EXPLAIN_SYSTEM = (
+    "You are the PLAIN-LANGUAGE agent, rendering a trial's clinician-facing fit "
+    "assessment for the PATIENT and family, doctor-guided. Write at a ~7th-grade "
+    "reading level, warm and clear, no jargon (briefly define any unavoidable term). "
+    "Ground everything in the FIT ASSESSMENT provided — do NOT add facts.\n\n"
+    "HONESTY RULES (critical): do NOT tell the patient they ARE eligible or that the "
+    "trial will help. 'unknown' criteria are OPEN QUESTIONS to confirm with the care "
+    "team, not reassurances. This is an explanation for a conversation with their "
+    "doctor, NOT medical advice or a recommendation.\n\n"
+    "Return STRICT JSON only:\n"
+    "{\n"
+    '  "what_it_is": "<1-2 plain sentences: what this trial is studying>",\n'
+    '  "why_it_may_fit": "<what already lines up for this patient, from met criteria>",\n'
+    '  "open_questions": ["<each unknown as a question to ask the care team>"],\n'
+    '  "what_it_involves": "<plain note on visits/logistics IF stated; else omit specifics>",\n'
+    '  "questions_to_ask": ["<2-4 good questions for the patient to ask their doctor>"]\n'
+    "}"
+)
+
+
+@app.post("/api/explain")
+def explain(req: FitRequest):
+    """Plain-language rendering of a trial's verified fit, for the patient."""
+    patient = get_patient(req.patient_id)
+    trial = fetch_trial(req.nct_id)
+    if trial is None:
+        raise HTTPException(status_code=404, detail=f"Trial {req.nct_id} not found")
+
+    try:
+        items = get_eligibility_results(patient["id"], trial["nct_id"])
+    except Exception:
+        items = []
+    if not items:
+        items = _compute_fit_items(patient, trial)
+
+    parsed = _agent_json(
+        "explain", _EXPLAIN_SYSTEM,
+        f"TRIAL {trial['nct_id']} — {trial['title']}\n\n"
+        f"PER-CRITERION FIT ASSESSMENT (source of truth):\n{_fit_digest(items)}",
+    ) or {}
+    return {
+        "trial": {"nct_id": trial["nct_id"], "title": trial["title"], "url": trial["url"]},
+        "explanation": parsed,
+    }
+
+
+class Preferences(BaseModel):
+    travel: str = "unsure"          # in_state | regional | anywhere | unsure
+    home_state: str | None = None   # patient's US state (for the travel heuristic)
+    goal: str = "unsure"            # quality_of_life | balanced | aggressive | unsure
+    phase1: str = "unsure"          # avoid | open | unsure (earliest-phase wariness)
+    caregiver: str = "unsure"       # strong | limited | unsure
+    financial_concern: bool = False
+
+
+class SummaryCandidate(BaseModel):
+    nct_id: str
+    title: str
+    url: str | None = None
+    signal: str = "needs_workup"
+    summary: dict = {}
+    phases: list[str] = []
+    states: list[str] = []
+
+
+class SummaryRequest(BaseModel):
+    patient_id: str | None = None
+    preferences: Preferences
+    candidates: list[SummaryCandidate]
+
+
+def _is_earliest_phase(phases: list[str]) -> bool:
+    return any(p in ("PHASE1", "EARLY_PHASE1") for p in (phases or []))
+
+
+def _preference_rerank(prefs: Preferences, candidates: list[SummaryCandidate]) -> list[dict]:
+    """DETERMINISTIC, documented re-rank by fit + preferences — NOT a recommendation.
+
+    Every adjustment carries a human-readable reason so the re-ordering is fully
+    transparent and clinician/patient-overridable. Preferences only re-weight the
+    already-assessed candidates; they never add or discover trials.
+    """
+    base_by_signal = {"looks_eligible": 100, "needs_workup": 60, "conflict": 20}
+    ranked = []
+    for c in candidates:
+        s = c.summary or {}
+        base = base_by_signal.get(c.signal, 50)
+        base -= 2 * int(s.get("unknown", 0)) + 10 * int(s.get("not_met", 0))
+        adjustments: list[dict] = []
+
+        earliest = _is_earliest_phase(c.phases)
+        in_state = bool(prefs.home_state and prefs.home_state in (c.states or []))
+
+        # Travel
+        if prefs.travel == "in_state" and prefs.home_state:
+            if in_state:
+                adjustments.append({"delta": 10, "reason": f"Has a site in your state ({prefs.home_state})."})
+            else:
+                adjustments.append({"delta": -25, "reason": f"No site listed in your state ({prefs.home_state}); would require out-of-state travel."})
+        elif prefs.travel == "regional" and prefs.home_state and not in_state:
+            adjustments.append({"delta": -10, "reason": "No nearby site; some travel likely."})
+
+        # Earliest-phase wariness / openness
+        if earliest and prefs.phase1 == "avoid":
+            adjustments.append({"delta": -20, "reason": "This is an earliest-phase (Phase 1) study, which you preferred to avoid."})
+        elif earliest and prefs.phase1 == "open":
+            adjustments.append({"delta": 5, "reason": "Earliest-phase study; you said you're open to these."})
+
+        # Goal alignment
+        if earliest and prefs.goal == "quality_of_life":
+            adjustments.append({"delta": -10, "reason": "Experimental/early-phase; you prioritized quality of life."})
+        elif earliest and prefs.goal == "aggressive":
+            adjustments.append({"delta": 10, "reason": "Experimental/early-phase; matches your interest in aggressive options."})
+
+        score = base + sum(a["delta"] for a in adjustments)
+        ranked.append({
+            "nct_id": c.nct_id, "title": c.title, "url": c.url,
+            "signal": c.signal, "summary": s, "phases": c.phases,
+            "base": base, "adjustments": adjustments, "score": score,
+        })
+    ranked.sort(key=lambda r: r["score"], reverse=True)
+    return ranked
+
+
+_SUMMARY_SYSTEM = (
+    "You are the SHARED-DECISION agent writing a note for a patient + clinician to "
+    "discuss together. You are given a DETERMINISTIC ranked list of trials (already "
+    "assessed for fit and re-weighted by the patient's stated preferences, with the "
+    "reason for each adjustment) plus the raw preferences. Write a short, plain, "
+    "non-directive note.\n\n"
+    "HONESTY RULES: do NOT recommend a trial or say one is 'best'. Explain how the "
+    "patient's preferences shifted the ordering, note trade-offs, and frame everything "
+    "as points for discussion with the care team. Not medical advice.\n\n"
+    "Return STRICT JSON only:\n"
+    "{\n"
+    '  "note": "<3-5 plain sentences summarizing the options in light of preferences>",\n'
+    '  "discussion_points": ["<specific trade-off or question to raise with the care team>"]\n'
+    "}"
+)
+
+
+@app.post("/api/summary")
+def summary(req: SummaryRequest):
+    """Shared-decision summary: deterministic preference re-rank + plain narrative."""
+    ranked = _preference_rerank(req.preferences, req.candidates)
+    prefs = req.preferences.model_dump()
+    digest = "\n".join(
+        f"- {r['title']} ({r['nct_id']}) — signal={r['signal']}, score={r['score']} "
+        f"[{'; '.join(a['reason'] for a in r['adjustments']) or 'no preference adjustment'}]"
+        for r in ranked
+    )
+    note = _agent_json(
+        "summary", _SUMMARY_SYSTEM,
+        f"PATIENT PREFERENCES:\n{json.dumps(prefs)}\n\n"
+        f"RANKED CANDIDATES (deterministic, preference-weighted):\n{digest}",
+    ) or {"note": "", "discussion_points": []}
+    return {"ranked": ranked, "preferences": prefs, "note": note}

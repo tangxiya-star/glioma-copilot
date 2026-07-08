@@ -15,6 +15,7 @@ _FIELDS = [
     "NCTId",
     "BriefTitle",
     "OverallStatus",
+    "Phase",
     "Condition",
     "EligibilityCriteria",
     "LocationCity",
@@ -27,6 +28,7 @@ def _flatten(study: dict[str, Any]) -> dict[str, Any]:
     ps = study.get("protocolSection", {})
     ident = ps.get("identificationModule", {})
     status = ps.get("statusModule", {})
+    design = ps.get("designModule", {})
     conds = ps.get("conditionsModule", {})
     elig = ps.get("eligibilityModule", {})
     locs = ps.get("contactsLocationsModule", {}).get("locations", []) or []
@@ -40,14 +42,18 @@ def _flatten(study: dict[str, Any]) -> dict[str, Any]:
             if loc.get("city")
         }
     )
+    # US states with a site — used by the shared-decision travel heuristic.
+    states = sorted({loc.get("state") for loc in locs if loc.get("state")})
 
     return {
         "nct_id": ident.get("nctId"),
         "title": ident.get("briefTitle"),
         "status": status.get("overallStatus"),
+        "phases": design.get("phases", []) or [],
         "conditions": conds.get("conditions", []),
         "eligibility": elig.get("eligibilityCriteria"),
         "locations": cities,
+        "states": states,
         "url": f"https://clinicaltrials.gov/study/{ident.get('nctId')}",
     }
 

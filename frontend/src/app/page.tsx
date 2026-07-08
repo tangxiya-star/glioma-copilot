@@ -32,6 +32,8 @@ type Trial = {
   title: string;
   locations: string[];
   url: string;
+  phases?: string[];
+  states?: string[];
   screen?: Screen;
 };
 
@@ -66,6 +68,49 @@ const SIGNAL = {
   needs_workup: { icon: "❓", label: "needs workup", cls: "text-amber-600", rank: 1 },
   conflict: { icon: "❌", label: "conflict", cls: "text-red-600", rank: 2 },
   no_criteria: { icon: "•", label: "no criteria", cls: "text-neutral-400", rank: 3 },
+};
+
+// --- Day 5: shared-decision workspace ---
+type Explanation = {
+  what_it_is?: string;
+  why_it_may_fit?: string;
+  open_questions?: string[];
+  what_it_involves?: string;
+  questions_to_ask?: string[];
+};
+type ExplainResp = { trial: { nct_id: string; title: string; url: string }; explanation: Explanation };
+
+type Prefs = {
+  travel: "in_state" | "regional" | "anywhere" | "unsure";
+  home_state: string;
+  goal: "quality_of_life" | "balanced" | "aggressive" | "unsure";
+  phase1: "avoid" | "open" | "unsure";
+  caregiver: "strong" | "limited" | "unsure";
+  financial_concern: boolean;
+};
+const DEFAULT_PREFS: Prefs = {
+  travel: "unsure",
+  home_state: "",
+  goal: "unsure",
+  phase1: "unsure",
+  caregiver: "unsure",
+  financial_concern: false,
+};
+type RankedTrial = {
+  nct_id: string;
+  title: string;
+  url?: string | null;
+  signal: TriageSignal;
+  summary: Summary;
+  phases: string[];
+  base: number;
+  adjustments: { delta: number; reason: string }[];
+  score: number;
+};
+type SummaryResp = {
+  ranked: RankedTrial[];
+  preferences: Record<string, unknown>;
+  note: { note?: string; discussion_points?: string[] };
 };
 
 type Draft = { assessment: string; claims: { claim: string; citation: string }[] };
@@ -117,6 +162,13 @@ export default function Home() {
   const [review, setReview] = useState<Review | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
 
+  // Day 5: plain-language explanation + preferences + shared-decision summary.
+  const [explain, setExplain] = useState<ExplainResp | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const [summary, setSummary] = useState<SummaryResp | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   useEffect(() => {
     // Pull all synthetic cases ONCE (reports inline) — switching is then instant.
     fetch(`${API_URL}/api/patients`)
@@ -141,6 +193,8 @@ export default function Home() {
     setReview(null);
     setTriage({});
     setPool(null);
+    setExplain(null);
+    setSummary(null);
     setMatchedCondition("");
     setReport(list.find((p) => p.id === id)?.report ?? "");
   }
@@ -236,6 +290,7 @@ export default function Home() {
   // items (instant) instead of re-streaming; otherwise run live fit.
   function openTrial(t: Trial) {
     const cached = triage[t.nct_id];
+    setExplain(null);
     if (cached && cached.items.length > 0) {
       setReview(null);
       setFitNct(t.nct_id);
@@ -254,6 +309,7 @@ export default function Home() {
     setFitLoading(true);
     setFit(null);
     setReview(null);
+    setExplain(null);
     try {
       const r = await fetch(`${API_URL}/api/fit/stream`, {
         method: "POST",
@@ -338,6 +394,55 @@ export default function Home() {
       }
     } finally {
       setReviewLoading(false);
+    }
+  }
+
+  // Day 5: plain-language explanation of the open trial's verified fit.
+  async function runExplain() {
+    if (!fit) return;
+    setExplainLoading(true);
+    setExplain(null);
+    try {
+      const r = await fetch(`${API_URL}/api/explain`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nct_id: fit.trial.nct_id, patient_id: caseId }),
+      });
+      setExplain(await r.json());
+    } finally {
+      setExplainLoading(false);
+    }
+  }
+
+  // Day 5: shared-decision summary — deterministic preference re-rank + narrative
+  // over the DEEP-ASSESSED candidates (never the whole pool; never a recommendation).
+  async function runSummary() {
+    const candidates = Object.entries(triage)
+      .filter(([, tri]) => tri.signal !== "no_criteria")
+      .map(([nct, tri]) => {
+        const t = trials?.find((x) => x.nct_id === nct);
+        return {
+          nct_id: nct,
+          title: t?.title ?? nct,
+          url: t?.url,
+          signal: tri.signal,
+          summary: tri.summary,
+          phases: t?.phases ?? [],
+          states: t?.states ?? [],
+        };
+      });
+    if (candidates.length === 0) return;
+    setSummaryLoading(true);
+    setSummary(null);
+    try {
+      const r = await fetch(`${API_URL}/api/summary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: caseId, preferences: prefs, candidates }),
+      });
+      setSummary(await r.json());
+    } finally {
+      setSummaryLoading(false);
     }
   }
 
@@ -622,8 +727,8 @@ export default function Home() {
                 </table>
               </div>
 
-              {/* Day 4: three-agent verification loop */}
-              <div className="pt-2">
+              {/* Day 4: three-agent verification loop · Day 5: plain-language */}
+              <div className="pt-2 flex flex-wrap gap-2">
                 <button
                   onClick={runReview}
                   disabled={reviewLoading}
@@ -631,7 +736,63 @@ export default function Home() {
                 >
                   {reviewLoading ? "Running 3-agent review…" : "Run 3-agent verification"}
                 </button>
+                <button
+                  onClick={runExplain}
+                  disabled={explainLoading}
+                  className="text-sm rounded-md border border-sky-400 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30 disabled:opacity-50 px-3 py-1.5"
+                >
+                  {explainLoading ? "Explaining…" : "🗣 Explain for patient"}
+                </button>
               </div>
+
+              {explain && explain.explanation && (
+                <div className="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-4 space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-sky-500">
+                      Plain-language explanation · for patient discussion
+                    </p>
+                    <span className="text-[11px] text-neutral-400">not medical advice</span>
+                  </div>
+                  {explain.explanation.what_it_is && (
+                    <p>
+                      <span className="font-medium">What it is: </span>
+                      {explain.explanation.what_it_is}
+                    </p>
+                  )}
+                  {explain.explanation.why_it_may_fit && (
+                    <p>
+                      <span className="font-medium">Why it may fit: </span>
+                      {explain.explanation.why_it_may_fit}
+                    </p>
+                  )}
+                  {explain.explanation.what_it_involves && (
+                    <p>
+                      <span className="font-medium">What it involves: </span>
+                      {explain.explanation.what_it_involves}
+                    </p>
+                  )}
+                  {explain.explanation.open_questions?.length ? (
+                    <div>
+                      <p className="font-medium">Still to confirm with your care team:</p>
+                      <ul className="list-disc ml-5 text-neutral-600 dark:text-neutral-300">
+                        {explain.explanation.open_questions.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {explain.explanation.questions_to_ask?.length ? (
+                    <div>
+                      <p className="font-medium">Questions to ask your doctor:</p>
+                      <ul className="list-disc ml-5 text-neutral-600 dark:text-neutral-300">
+                        {explain.explanation.questions_to_ask.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               {review && (
                 <div className="space-y-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
@@ -726,7 +887,188 @@ export default function Home() {
           )}
         </section>
       )}
+
+      {/* Day 5: shared-decision workspace — preferences visibly re-rank the
+          already-assessed candidates (heuristic + documented, NOT a recommendation). */}
+      {Object.keys(triage).length > 0 && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="font-semibold">Shared-decision workspace</h2>
+            <p className="text-xs text-neutral-400">
+              Patient preferences (entered doctor-guided — not part of the chart) re-weight the
+              assessed candidates. Transparent heuristic with reasons — for discussion, not a
+              recommendation.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <PrefSelect
+              label="Travel"
+              value={prefs.travel}
+              onChange={(v) => setPrefs({ ...prefs, travel: v as Prefs["travel"] })}
+              options={[
+                ["unsure", "No preference"],
+                ["in_state", "Stay in my state"],
+                ["regional", "Regional / limited"],
+                ["anywhere", "Willing to travel"],
+              ]}
+            />
+            <label className="text-sm space-y-1">
+              <span className="block text-xs text-neutral-500">Home state (for travel)</span>
+              <input
+                value={prefs.home_state}
+                onChange={(e) => setPrefs({ ...prefs, home_state: e.target.value })}
+                placeholder="e.g. California"
+                className="w-full border border-neutral-200 dark:border-neutral-800 bg-transparent rounded-md px-2 py-1.5"
+              />
+            </label>
+            <PrefSelect
+              label="Goal"
+              value={prefs.goal}
+              onChange={(v) => setPrefs({ ...prefs, goal: v as Prefs["goal"] })}
+              options={[
+                ["unsure", "No preference"],
+                ["quality_of_life", "Prioritize quality of life"],
+                ["balanced", "Balanced"],
+                ["aggressive", "Aggressive / experimental"],
+              ]}
+            />
+            <PrefSelect
+              label="Earliest-phase (Phase 1) trials"
+              value={prefs.phase1}
+              onChange={(v) => setPrefs({ ...prefs, phase1: v as Prefs["phase1"] })}
+              options={[
+                ["unsure", "No preference"],
+                ["avoid", "Prefer to avoid"],
+                ["open", "Open to them"],
+              ]}
+            />
+            <PrefSelect
+              label="Caregiver support"
+              value={prefs.caregiver}
+              onChange={(v) => setPrefs({ ...prefs, caregiver: v as Prefs["caregiver"] })}
+              options={[
+                ["unsure", "No preference"],
+                ["strong", "Strong"],
+                ["limited", "Limited"],
+              ]}
+            />
+            <label className="text-sm flex items-center gap-2 mt-5">
+              <input
+                type="checkbox"
+                checked={prefs.financial_concern}
+                onChange={(e) => setPrefs({ ...prefs, financial_concern: e.target.checked })}
+              />
+              <span>Financial / lodging is a concern</span>
+            </label>
+          </div>
+
+          <button
+            onClick={runSummary}
+            disabled={summaryLoading}
+            className="text-sm rounded-md bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-3 py-1.5"
+          >
+            {summaryLoading ? "Generating…" : "Generate shared-decision summary"}
+          </button>
+
+          {summary && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
+                  Preference-weighted ordering (each adjustment shown)
+                </p>
+                <ol className="space-y-2">
+                  {summary.ranked.map((r, i) => {
+                    const sig = SIGNAL[r.signal] ?? SIGNAL.no_criteria;
+                    return (
+                      <li
+                        key={r.nct_id}
+                        className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-medium">
+                            {i + 1}. {r.title}
+                          </span>
+                          <span className={`text-xs whitespace-nowrap ${sig.cls}`}>
+                            {sig.icon} {sig.label} · score {r.score}
+                          </span>
+                        </div>
+                        <span className="block text-xs text-neutral-400 mt-0.5">
+                          {r.nct_id}
+                          {r.phases?.length ? <> · {r.phases.join("/")}</> : null}
+                        </span>
+                        {r.adjustments.length > 0 && (
+                          <ul className="mt-1.5 space-y-0.5">
+                            {r.adjustments.map((a, j) => (
+                              <li
+                                key={j}
+                                className={`text-xs ${a.delta >= 0 ? "text-emerald-600" : "text-amber-600"}`}
+                              >
+                                {a.delta >= 0 ? `+${a.delta}` : a.delta} · {a.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+
+              {summary.note?.note && (
+                <div className="rounded-xl border border-violet-300 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/30 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-violet-500">
+                      Shared-decision note
+                    </p>
+                    <span className="text-[11px] text-neutral-400">
+                      for discussion · not a recommendation
+                    </span>
+                  </div>
+                  <p className="text-sm">{summary.note.note}</p>
+                  {summary.note.discussion_points?.length ? (
+                    <ul className="list-disc ml-5 text-sm text-neutral-600 dark:text-neutral-300">
+                      {summary.note.discussion_points.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
     </main>
+  );
+}
+
+function PrefSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <label className="text-sm space-y-1">
+      <span className="block text-xs text-neutral-500">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full border border-neutral-200 dark:border-neutral-800 bg-transparent rounded-md px-2 py-1.5"
+      >
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
