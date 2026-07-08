@@ -736,7 +736,15 @@ export default function Home() {
                         </td>
                         <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{tx || "—"}</td>
                         <td className="py-3 pr-5 align-top text-right">
-                          <span className="text-sm font-medium text-indigo-600">Analyze →</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPatient(p.id);
+                            }}
+                            className="whitespace-nowrap rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700"
+                          >
+                            Analyze →
+                          </button>
                         </td>
                       </tr>
                     );
