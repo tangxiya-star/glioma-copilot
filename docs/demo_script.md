@@ -1,121 +1,143 @@
-# GBM Shared Decision Evidence Copilot — Demo Script
+# Glioma Evidence Review & Shared Decision Copilot — Demo Script
 
-> For the Abridge hackathon. Core framing: **the trial decision is not one conversation — it's several, across people and touchpoints. Our copilot stitches those scattered, verified pieces into one source-grounded shared-decision note.**
+> **Built with Claude: Life Sciences** (Builder track). Core framing: doctors already
+> know how to *find* glioma trials — the hard part is the **last mile after the list**:
+> checking one patient against 20+ eligibility lines, catching what's still unknown,
+> and deciding *with* the patient. That's what this copilot does — and every molecular
+> fact is a **real, traceable de-identified TCGA sample**.
+
+Live: frontend https://glioma-copilot.vercel.app/ · backend on Render (warm `/health`
+before recording — free tier sleeps ~15 min).
 
 ---
 
 ## 0. The 20-second hook (say this first)
 
-> "Deciding on a glioblastoma trial isn't a single appointment. It's an in-person visit where the family says 'we can't travel out of state,' a tumor board the patient never sees, and a coordinator call about eligibility — spread across days. Today nobody stitches those together, and nothing is verifiable. We do both."
+> "Finding glioma trials is largely solved — clinicians know what's recruiting. The
+> bottleneck is the review-and-decide work *after* the list: does *this* patient
+> actually meet *all* the eligibility, what's still missing, and how do you and the
+> patient decide together. Our copilot does that — over a **real** molecular profile,
+> with every fit judgment cited and self-checked."
 
-Why this wins with Abridge judges: it's a **conversation → verified documentation** story (Abridge's core), not just a trial-search tool.
-
----
-
-## 1. Setup (10s)
-
-- Patient: **Mock Case 001** — 58 y/o, recurrent GBM, IDH-wildtype, MGMT methylated, prior surgery + radiation + temozolomide, lives in California.
-- On screen: empty Clinician Workspace.
-- Say: "Everything you'll see is synthetic — no PHI. But the trial data is live from ClinicalTrials.gov."
+Why it wins: it's **Claude Use + Depth** in a place with real clinical stakes — not a
+prettier trial search.
 
 ---
 
-## 2. Touchpoint A — the in-person conversation (45s)
+## 1. Setup (15s)
 
-Paste a short **synthetic transcript** into the copilot:
-
-```
-[Clinician] Your pathology came back — MGMT is methylated, which is
-            good news for a few trials we can consider.
-[Patient]   I really don't want to travel out of state. My husband can
-            only be with me two days a week.
-[Clinician] Understood. Let's prioritize what's here in California, and
-            I'll be honest with you about what's experimental.
-```
-
-Show the copilot extract, with each item **linked back to the utterance**:
-- Preference: *no out-of-state travel* → [transcript 00:14]
-- Preference: *caregiver available 2 days/week* → [transcript 00:19]
-- Clinical context: *MGMT methylated* → [transcript 00:03]
-
-> Talking point: "This is the Abridge move — the patient's own words become structured, and every field is traceable to what was actually said."
+- Patient: **Case 001 — 54 y/o male, glioblastoma, IDH-wildtype** (recurrent; prior
+  surgery + radiation + temozolomide; California).
+- Say: "The patient *story* is synthetic — no PHI. But the **molecular data is a real,
+  de-identified TCGA sample** (TCGA-02-0033) — click the green card and you land on
+  that exact sample in cBioPortal. And the trials are **live from ClinicalTrials.gov**."
+- Point at the green **"Real molecular data · de-identified"** card + the marker chips.
 
 ---
 
-## 3. Touchpoint B — evidence retrieval + verification (60s)
+## 2. Report → deterministic WHO CNS5 classification (30s)
 
-Copilot pulls live GBM trials and builds the evidence brief. Show the **three-agent loop** doing real work:
+- Show the integrated neuropathology report (real molecular section + a clearly
+  labeled *constructed clinical layer*).
+- Click **Analyze**. The **WHO CNS5 classifier** returns *Glioblastoma, IDH-wildtype,
+  grade 4* with **cited, step-by-step reasoning**.
 
-- **Drafting agent** writes: "Patient is eligible for Trial A."
-- **Verification agent** flags it: *Ambiguous — disease and age match, but EGFR status unknown.*
-- **Resolution**: reworded to "Potentially relevant; needs EGFR check."
-
-> Talking point: "Claude never invents eligibility. It reasons only over retrieved ClinicalTrials.gov records, and the verification agent catches the overclaim. This is the difference between a demo and something a clinician would trust."
-
-Every claim in the brief carries a `[NCT…]` or `[Pathology]` citation. Point at one and click through.
-
----
-
-## 4. Touchpoint C — tumor board (the piece the patient never sees) (20s)
-
-Show a clinician-only note that the patient wasn't present for:
-
-> "Tumor board favors Trial A pending EGFR; Trial C strong biologically but out-of-state."
-
-> Talking point: "This decision happened in a room the patient will never be in. Normally it's lost. We capture it as another verified touchpoint — and it's about to matter."
+> Talking point: "Claude normalizes the free-text report into fields; a **hardcoded
+> rule engine** makes the actual diagnosis. Claude is **not** the source of truth — the
+> classification is auditable and defensible."
 
 ---
 
-## 5. The stitch — preference-aware ranking (30s)
+## 3. Exhaustive candidate triage (40s)
 
-The copilot merges the **in-person preferences** + **verified evidence** + **tumor board reasoning**:
+Analyze also runs the candidate pipeline. Point at the counts as they land:
 
-| Rank | Trial | Medical fit | Preference fit | Why |
-|------|-------|-------------|----------------|-----|
-| 1 | Trial A | High | High | In-state (UCSF) + Phase II |
-| 2 | Trial B | Medium | Medium | Local but Phase I |
-| 3 | Trial C | High | Low | Requires Boston — conflicts with stated preference |
+- **Stage 0 — pull *every* recruiting trial** for the tumor type (glioblastoma ≈ **326**),
+  not a top-N slice.
+- **Stage 1 — deterministic screen** flags hard conflicts (≈ 75 flagged / 251 clear),
+  each with a **reason**, deprioritized but **never hidden**.
+- **Stage 2 — real per-criterion fit** on the top screen-clear candidates, badged
+  (✅ met · ❓ unknown · ❌ not-met) and sorted; header reads "deep-assessed N of 326."
 
-> Talking point: "Trial C is biologically the best match — and it drops to #3, *because the patient told us she can't travel*. That's shared decision-making, not an algorithm overriding the patient."
-
-(Note for judges: the ranking is a heuristic sorting aid, **not** a recommendation or a validated score — consistent with our non-goals.)
-
----
-
-## 6. The payoff — one source-grounded note (30s)
-
-Generate the **Shared Decision Summary**. Emphasize it fuses three separate touchpoints into one document:
-
-- Options discussed (with citations)
-- Patient preferences (linked to her actual words)
-- Open questions (confirm EGFR, contact Trial A coordinator, ask about travel support for C)
-- Draft note ready for clinician review
-
-> Closing line: "Three conversations, three sources, zero PHI, every claim traceable — one note the clinician signs. **We didn't help the AI pick a trial. We helped the team decide together, and we made the reasoning verifiable.**"
+> Talking point: "We consider **every** recruiting trial — so a good one buried at #50
+> is never silently missed — then the expensive reasoning goes only where it matters.
+> This is candidate *scoping for review*, not discovery; the clinician decides."
 
 ---
 
-## 7. If a clinician judge pushes back — pre-loaded answers
+## 4. Per-criterion fit + the 3-agent verification (the money moment) (45s)
+
+Open a trial → the **per-criterion table**: each eligibility line judged
+met / not-met / unknown with the **exact line cited**.
+
+Then click **Run 3-agent verification**:
+
+- **Drafting agent**: "The patient is eligible for this trial."
+- **Verification agent (Opus)**: catches it — a decisive criterion (EGFR) is **unknown**;
+  **rewrites** to "potentially relevant; requires EGFR testing to confirm."
+- **Investigation agent**: "Order EGFR amplification / EGFRvIII testing."
+
+> Talking point: "The verification agent catches its **own** overclaim against the
+> per-criterion evidence. That self-check is the difference between a demo and something
+> a clinician would trust."
+
+**Depth beat (switch to Case 004 if time):** a plain biomarker filter would say this
+IDH-wildtype GBM patient "matches" recruiting GBM trials — but many **exclude prior
+bevacizumab**, which lives in the clinical narrative, not a filter field. Our screen +
+fit **catch the buried exclusion** and flag it `not-met`. That's the false-match a
+filter can't see.
+
+---
+
+## 5. Explain for the patient + shared decision (40s)
+
+- Click **🗣 Explain for patient** → a plain-language card (~7th-grade). Note the
+  honesty: unknowns become **"questions to confirm with your care team,"** never "you
+  are eligible."
+- Fill the **preference form** (entered doctor-guided, *not* in the chart): stay
+  in-state (California), prefer to avoid Phase 1, prioritize quality of life.
+- Click **Generate shared-decision summary**. The **preference-weighted ranking**
+  visibly re-orders the assessed trials, and **every adjustment shows its reason**
+  (e.g. "−25 · no site in California; out-of-state travel"). Plus a plain,
+  non-directive **shared-decision note**.
+
+> Talking point: "A biologically strong trial drops **because the patient told us she
+> can't travel** — and you can see exactly why. That's shared decision-making, with the
+> reasoning shown — not an algorithm overriding the patient."
+
+---
+
+## 6. Close (15s)
+
+> "From a **real** molecular profile to a shared decision: classify with an auditable
+> rule engine, consider **every** recruiting trial, verify against the **full**
+> eligibility with citations, catch the overclaim, explain it plainly, and decide
+> together — every fact traceable. **We don't pick the trial. We make the reasoning
+> trustworthy.**"
+
+---
+
+## 7. If a judge pushes back — pre-loaded answers
 
 - **"Isn't this just a trial matcher? Doctors already filter by IDH and get a pop-up list."** → Those tools do **discovery** — filter a few *structured* fields and return a list. We don't compete there; we take the candidate pool exhaustively and call it scoping, not matching. We fill the **last mile the clinician still does by hand after the list appears**: (1) check the *whole* record against the *whole* eligibility — 15–30 criteria, most of it free text a filter never reads — per criterion, cited; (2) surface what's **unknown/missing** as a next step; (3) **catch over-claims** (verify agent rewrites an over-stated "eligible" when a decisive criterion is actually unknown); (4) translate to plain language + a preference-aware shared-decision note. *Concrete:* a filter says our IDH-wildtype GBM patient "matches" recruiting GBM trials — but many **exclude prior bevacizumab**, which lives in the clinical narrative, not a filter field, so the match is **false**; our per-criterion fit catches it. From *"these trials may be relevant"* → *"why this one may or may not fit **this** patient, what's missing, and how you two decide."*
-- **"Is this giving medical advice?"** → No. Non-goal by design. Language is "potentially relevant," "for clinician review." No survival prediction, no autonomous enrollment.
-- **"Trial data goes stale."** → Every card shows source + last-updated + uncertainty state.
-- **"Where do the conversations come from?"** → Synthetic for the demo (like the patient). In production this is ambient capture — in-person room audio or a telehealth call. Both are Abridge-native.
-- **"Is the 92% a real score?"** → It's a heuristic sort label, not a validated eligibility probability. We deliberately avoid unsupported scoring.
+- **"Is this giving medical advice?"** → No. Non-goal by design. Language is "potentially relevant," "for clinician review." No survival prediction, no autonomous enrollment, no picking a trial.
+- **"Is the molecular data real, or made up?"** → **Real**, de-identified: every case maps to a specific TCGA sample in cBioPortal (study `lgggbm_tcga_pub`, Cell 2016). Click the green card to verify. The clinical *narrative* around it (recurrence, prior bevacizumab) is a **labeled** constructed layer — we never present it as real.
+- **"Is the ranking a validated eligibility score?"** → No. It's a **transparent heuristic** re-weighting already-assessed trials by stated preferences; every adjustment shows its reason and delta. We deliberately avoid an unsupported "match %".
+- **"Trial data goes stale."** → Trials are pulled **live** from ClinicalTrials.gov on each Analyze; every trial links to its NCT record.
+- **"Did you cherry-pick a few trials?"** → No — we pull **all** recruiting trials for the tumor type and report "deep-assessed N of `<total>`"; screened-out trials stay listed and openable.
 
 ---
 
-## Timing
+## Timing (target ~3-min video + live Q&A)
 
 | Section | Time | Running |
 |---------|------|---------|
 | Hook | 0:20 | 0:20 |
-| Setup | 0:10 | 0:30 |
-| Touchpoint A (conversation) | 0:45 | 1:15 |
-| Touchpoint B (evidence + verify) | 1:00 | 2:15 |
-| Touchpoint C (tumor board) | 0:20 | 2:35 |
-| The stitch (ranking) | 0:30 | 3:05 |
-| Payoff (the note) | 0:30 | 3:35 |
-| Q&A buffer | — | ~4:00 |
+| Setup + provenance | 0:15 | 0:35 |
+| Report → classification | 0:30 | 1:05 |
+| Exhaustive triage | 0:40 | 1:45 |
+| Per-criterion fit + 3-agent verify | 0:45 | 2:30 |
+| Explain + shared decision | 0:40 | 3:10 |
+| Close | 0:15 | 3:25 |
 
-Fits a 4–5 minute slot with room for questions.
+Trim the Case-004 Depth beat if you need to land under 3:00; keep it for live Q&A.
