@@ -126,6 +126,11 @@ def build_case_from_tcga(barcode: str) -> dict[str, Any]:
             "url": f"https://portal.gdc.cancer.gov/cases/{gdc['uuid']}" if gdc["uuid"] else "https://portal.gdc.cancer.gov/",
             "agents": agents or ["(no treatment recorded in GDC)"],
         },
+        "clinical": {
+            "primary_diagnosis": gdc.get("primary_diagnosis"),
+            "site": gdc.get("site"),
+            "performance_kps": (pat.get("KARNOFSKY_PERFORMANCE_SCORE") or "").split(".")[0] or None,
+        },
     }
 
     idh = smpl.get("IDH_STATUS", "").lower()

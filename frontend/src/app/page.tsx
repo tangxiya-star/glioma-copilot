@@ -25,6 +25,7 @@ type Provenance = {
   url: string;
   markers: Record<string, string>;
   treatment?: { source: string; url: string; agents: string[] };
+  clinical?: { primary_diagnosis?: string; site?: string; performance_kps?: string };
 };
 type Patient = { id: string; label: string; report: string; provenance?: Provenance | null };
 type Screen = { status: "clear" | "flagged"; reasons: string[] };
@@ -621,8 +622,8 @@ export default function Home() {
 
         {/* ===== Main ===== */}
         <main className="min-w-0 flex-1 p-6 space-y-6">
-          {/* Top bar */}
-          <div className={`${CARD} flex flex-wrap items-center gap-3 px-5 py-3.5`}>
+          {/* Top bar — sticky so Analyze stays in reach while scrolling */}
+          <div className={`${CARD} sticky top-4 z-20 flex flex-wrap items-center gap-3 px-5 py-3.5`}>
             <div className="min-w-0">
               <p className="text-lg font-bold">
                 {view === "panel"
@@ -669,6 +670,8 @@ export default function Home() {
                     <th className="py-3 pr-3 font-medium">MGMT</th>
                     <th className="py-3 pr-3 font-medium">ATRX</th>
                     <th className="py-3 pr-3 font-medium">Grade</th>
+                    <th className="py-3 pr-3 font-medium">KPS</th>
+                    <th className="py-3 pr-3 font-medium">Site</th>
                     <th className="py-3 pr-3 font-medium">Prior therapy</th>
                     <th className="py-3 pr-5 font-medium"></th>
                   </tr>
@@ -699,6 +702,12 @@ export default function Home() {
                         <td className="py-3 pr-3">{m.MGMT_PROMOTER_STATUS ?? "—"}</td>
                         <td className="py-3 pr-3">{m.ATRX_STATUS ?? "—"}</td>
                         <td className="py-3 pr-3">{m.GRADE ?? "—"}</td>
+                        <td className="py-3 pr-3 whitespace-nowrap">
+                          {p.provenance?.clinical?.performance_kps ?? "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-xs text-slate-500">
+                          {p.provenance?.clinical?.site ?? "—"}
+                        </td>
                         <td className="py-3 pr-3 text-xs text-slate-500">{tx || "—"}</td>
                         <td className="py-3 pr-5 text-right">
                           <span className="text-xs font-medium text-indigo-600">Analyze →</span>
