@@ -25,7 +25,17 @@ type Provenance = {
   url: string;
   markers: Record<string, string>;
   treatment?: { source: string; url: string; agents: string[] };
-  clinical?: { primary_diagnosis?: string; site?: string; performance_kps?: string };
+  clinical?: {
+    primary_diagnosis?: string;
+    site?: string;
+    performance_kps?: string;
+    status?: string;
+    resection?: string;
+    steroid?: string;
+    location?: string;
+    measurable?: string;
+    _constructed?: string[];
+  };
 };
 type Patient = { id: string; label: string; report: string; provenance?: Provenance | null };
 type Screen = { status: "clear" | "flagged"; reasons: string[] };
@@ -672,6 +682,10 @@ export default function Home() {
                     <th className="py-3 pr-3 font-medium">Grade</th>
                     <th className="py-3 pr-3 font-medium">KPS</th>
                     <th className="py-3 pr-3 font-medium">Site</th>
+                    <th className="py-3 pr-3 font-medium whitespace-nowrap">Status *</th>
+                    <th className="py-3 pr-3 font-medium whitespace-nowrap">Resection *</th>
+                    <th className="py-3 pr-3 font-medium">Steroid *</th>
+                    <th className="py-3 pr-3 font-medium whitespace-nowrap">Location *</th>
                     <th className="py-3 pr-3 font-medium">Prior therapy</th>
                     <th className="py-3 pr-5 font-medium"></th>
                   </tr>
@@ -708,6 +722,18 @@ export default function Home() {
                         <td className="py-3 pr-3 text-xs text-slate-500">
                           {p.provenance?.clinical?.site ?? "—"}
                         </td>
+                        <td className="py-3 pr-3 text-xs italic text-slate-500">
+                          {p.provenance?.clinical?.status ?? "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-xs italic text-slate-500">
+                          {p.provenance?.clinical?.resection ?? "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-xs italic text-slate-500 whitespace-nowrap">
+                          {p.provenance?.clinical?.steroid ?? "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-xs italic text-slate-500">
+                          {p.provenance?.clinical?.location ?? "—"}
+                        </td>
                         <td className="py-3 pr-3 text-xs text-slate-500">{tx || "—"}</td>
                         <td className="py-3 pr-5 text-right">
                           <span className="text-xs font-medium text-indigo-600">Analyze →</span>
@@ -719,7 +745,9 @@ export default function Home() {
               </table>
               <p className="px-5 py-3 text-[11px] text-slate-400">
                 Real de-identified TCGA patients (all recorded alive) — molecular from cBioPortal,
-                treatment from NIH GDC. Click a row to analyze that patient. Survival is never shown.
+                treatment + KPS/site from NIH GDC/cBioPortal. <span className="italic">* italic =
+                illustrative clinical layer (constructed, not in public data — recurrence, resection,
+                steroid, location).</span> Click a row to analyze. Survival is never shown.
               </p>
             </div>
           )}
