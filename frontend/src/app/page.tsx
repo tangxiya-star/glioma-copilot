@@ -181,6 +181,8 @@ export default function Home() {
   // Drug normalization (RxNorm + ChEMBL) of the report's prior therapies.
   const [drugs, setDrugs] = useState<DrugNorm[] | null>(null);
   const [drugsLoading, setDrugsLoading] = useState(false);
+  // Two-step flow: clinician review (evidence only) → shared decision (with patient).
+  const [view, setView] = useState<"clinician" | "shared">("clinician");
 
   useEffect(() => {
     // Pull all synthetic cases ONCE (reports inline) — switching is then instant.
@@ -209,6 +211,7 @@ export default function Home() {
     setExplain(null);
     setSummary(null);
     setDrugs(null);
+    setView("clinician");
     setMatchedCondition("");
     setReport(list.find((p) => p.id === id)?.report ?? "");
   }
@@ -488,10 +491,26 @@ export default function Home() {
       <header className="space-y-1">
         <h1 className="text-3xl font-bold">🧠 Glioma Copilot</h1>
         <p className="text-neutral-500 text-sm">
-          Clinician view — report → WHO CNS5 classification → per-criterion trial fit, every step cited
+          Report → WHO CNS5 classification → per-criterion trial fit, every step cited
         </p>
       </header>
 
+      {/* Two steps: clinician review is evidence-only (no patient input); the shared
+          decision (preferences) is a separate, doctor-guided step done with the patient. */}
+      <div className="flex gap-1 border-b border-neutral-200 dark:border-neutral-800">
+        <TabButton active={view === "clinician"} onClick={() => setView("clinician")}>
+          ① Clinician review
+        </TabButton>
+        <TabButton
+          active={view === "shared"}
+          onClick={() => setView("shared")}
+          disabled={Object.keys(triage).length === 0}
+        >
+          ② Shared decision {Object.keys(triage).length === 0 && "· review first"}
+        </TabButton>
+      </div>
+
+      {view === "clinician" && (
       <div className="grid md:grid-cols-2 gap-6">
         {/* Report + classification */}
         <section className="space-y-3">
@@ -761,9 +780,10 @@ export default function Home() {
           )}
         </section>
       </div>
+      )}
 
-      {/* Fit assessment table */}
-      {(fitLoading || fit) && (
+      {/* Fit assessment table — clinician review */}
+      {view === "clinician" && (fitLoading || fit) && (
         <section className="space-y-3">
           <h2 className="font-semibold">
             Trial Fit Assessment
@@ -980,9 +1000,9 @@ export default function Home() {
         </section>
       )}
 
-      {/* Day 5: shared-decision workspace — preferences visibly re-rank the
+      {/* Step 2: shared-decision workspace — preferences visibly re-rank the
           already-assessed candidates (heuristic + documented, NOT a recommendation). */}
-      {Object.keys(triage).length > 0 && (
+      {view === "shared" && (
         <section className="space-y-4">
           <div>
             <h2 className="font-semibold">Shared-decision workspace</h2>
@@ -1184,6 +1204,32 @@ function sortByTriage(
     .map((t, i) => ({ t, i, ...rankOf(t) }))
     .sort((a, b) => a.f - b.f || a.r - b.r || a.u - b.u || a.i - b.i)
     .map((x) => x.t);
+}
+
+function TabButton({
+  active,
+  onClick,
+  disabled,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+        active
+          ? "border-violet-600 text-violet-700 dark:text-violet-300"
+          : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+      }`}
+    >
+      {children}
+    </button>
+  );
 }
 
 function Chip({ children, cls }: { children: React.ReactNode; cls: string }) {
