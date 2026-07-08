@@ -68,7 +68,30 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 
 ---
 
-## Current status & next steps  (updated mid-build — Day 0→4 done)
+## Current status & next steps  (updated Jul 8 — Day 0→5 + large post-Day-5 build; DEPLOYED)
+
+> **START HERE (fresh session).** Everything below through "Day 5 — DONE" is built,
+> committed on `main`, and **deployed** (Vercel + Render). Recent post-Day-5 work
+> (all committed + deployed):
+> - **8-patient Patient panel** = 4 curated + 4 real living TCGA (`backend/app/panel_extra.json`).
+>   ALL fields REAL where public data supports (molecular cBioPortal; treatment/disease-status/
+>   resection/KPS/site GDC; drug identity+mechanism RxNorm/ChEMBL). ONLY steroid dose + precise
+>   location are labeled CONSTRUCTED (+ Case-001 EGFR-pending gate). Full table: `docs/patient-data.md`.
+> - **Exhaustive 3-stage triage** (pull ALL recruiting → deterministic recall-preserving pre-screen
+>   `prescreen.py` → per-criterion fit top-N). **ChEMBL mechanism wired into the pre-screen** (drug-class
+>   match: anti-VEGF catches bevacizumab a name filter misses; UI callout).
+> - **UI redesigned as a clinical dashboard** (sidebar, indigo/slate, cards, stat tiles); 3 views:
+>   📋 Patient panel → ① Clinician review → ② Shared decision. **Live case loader** (`/api/case/from_tcga`,
+>   any real TCGA barcode). NCT ids link out to ClinicalTrials.gov.
+> - **Docs**: PRD §4.1 (vs matchers), §4.1.1 (why LLM not a rule engine), §11.3 (retrieval pipeline +
+>   ASCII), §12.2 (RxNorm+ChEMBL), §12.5(+.1) feature table + real-registry calibration; `demo_script.md`
+>   rewritten to match the build.
+> - **Honesty rule (new):** do NOT import the user's private WeChat patient-group registry xlsx (no
+>   consent for public/open-source use); schema-only. Public de-identified TCGA/GDC/cBioPortal only.
+>
+> **Day 6 (only thing left):** rehearse/lock the demo, record the 3-min video (`docs/demo_script.md`),
+> write the 100–200 word summary, `gh repo edit tangxiya-star/glioma-copilot --visibility public`
+> (still private), submit before Jul 13 9pm ET. To run locally: see bottom of this section.
 
 **Stack (built):** Next.js (frontend/ → Vercel) + FastAPI (backend/ → Render) + Neon
 Postgres + Claude API. Per-agent model config (`backend/app/config.py` AGENT_MODELS:
