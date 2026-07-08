@@ -257,9 +257,30 @@ Stores connected data for:
 - Regulatory records
 - Trial statuses
 
-## 11.3 Trial Fit Assessment
+## 11.3 Candidate Retrieval, Screening & Fit Triage
 
-For each candidate trial under clinician review, the system does **not** rank-to-recommend; it assesses *fit* and surfaces the reasoning for clinician review. It answers:
+How the candidate set is assembled and ordered — the step before per-trial review. The design goal is deliberately **not** "find THE single best trial" (that is a clinician + patient-preference judgment and would cross the autonomous-recommendation line). It is: **miss nothing, assess broadly, order transparently, let the clinician decide.** A three-stage pipeline, every stage deterministic or cited — no AI relevance ranking anywhere in retrieval.
+
+### 11.3.1 Stage 0 — Exhaustive candidate retrieval (no top-N slice)
+
+The candidate pool is scoped by the patient's **tumor type** (derived deterministically from the WHO CNS5 diagnosis: glioblastoma / astrocytoma / oligodendroglioma / glioma) and status **RECRUITING**, then pulled **exhaustively** from the live ClinicalTrials.gov v2 API — every matching trial, paginated, not a top-N slice. (E.g. "glioblastoma, recruiting" ≈ 326 trials at time of writing.)
+
+Rationale: a genuinely relevant trial buried deep in ClinicalTrials.gov's default sort must never be silently missed. Because the pool is finite and bounded, taking **all** of it makes the source's default ordering irrelevant. Scoping by tumor type is candidate *scoping for clinician review*, not discovery — consistent with the "not a trial finder" positioning (§9).
+
+### 11.3.2 Stage 1 — Deterministic pre-screen (recall-preserving deprioritization)
+
+Running the expensive per-criterion fit on hundreds of trials is infeasible, so a cheap, **deterministic** screen orders which trials earn the expensive assessment — **without an AI black-box relevance score.**
+
+- **Inputs (structured, clinician-auditable facts only):** the patient's IDH status and 1p/19q status (from the real molecular profile), and clinical flags such as prior bevacizumab. No model judgment.
+- **What it flags — HARD conflicts only:** the eligibility text is split into its **Inclusion** and **Exclusion** sections (to cut false positives), then scanned for unambiguous incompatibilities:
+  - an Inclusion section requiring a molecular type the patient cannot meet (e.g. requires *IDH-mutant* → patient is IDH-wildtype; requires *1p/19q-codeleted* → patient is non-codeleted),
+  - an Exclusion section restricting a prior therapy the patient received (e.g. prior *bevacizumab* / anti-VEGF).
+- **Weighting / ordering rule:** flagged trials are **deprioritized** (sorted to the bottom), screen-clear trials rise. This is the only "weight" applied at retrieval, and it is a binary, reasoned deprioritization — not a score.
+- **Recall-preserving, never hides:** a flagged trial is **still listed, still openable, and can still be deep-assessed**; every flag carries a human-readable reason and the clinician can override it. False positives are therefore visible and recoverable — the screen is an aid, not proof.
+
+### 11.3.3 Stage 2 — Per-criterion Trial Fit Assessment (the real assessment)
+
+The expensive, cited assessment (Claude) runs on the **top screen-clear candidates** (a small N, e.g. 4, capped to bound cost/latency), streamed one trial at a time. For each candidate trial the system does **not** rank-to-recommend; it assesses *fit* and surfaces the reasoning for clinician review. It answers:
 
 - Why is this trial potentially relevant?
 - Which eligibility criteria are already satisfied?
@@ -268,7 +289,18 @@ For each candidate trial under clinician review, the system does **not** rank-to
 - What are the logistical barriers (travel, visit frequency)?
 - What uncertainties remain?
 
-Assessed against: disease/entity (2021 WHO), recurrence status, biomarkers, prior treatments, age, location/logistics, trial status, and patient preferences. Output framing is always "why Trial A may or may not be appropriate," never "Trial A is recommended."
+Each criterion is judged **met / not-met / unknown** with the exact eligibility line cited, and the trial gets a fit badge (✅ met · ❓ unknown · ❌ not-met) plus a conservative triage signal (`looks_eligible` / `needs_workup` / `conflict`). Assessed against: disease/entity (2021 WHO), recurrence status, biomarkers, prior treatments, age, location/logistics, trial status, and patient preferences. Output framing is always "why Trial A may or may not be appropriate," never "Trial A is recommended."
+
+### 11.3.4 Final ordering & the honesty boundary
+
+The list the clinician sees is ordered: **deep-assessed screen-clear trials first (ranked by fit — fewest hard conflicts, then fewest unknowns), then the remaining screen-clear pool, then flagged trials last (dimmed, with reasons).** The UI always reports "deep-assessed N of `<total>`" — **no silent truncation**: the clinician can see the full pool count and open any trial, screened-out or not.
+
+What the system does and does **not** claim:
+
+- ✅ Claims: *every* recruiting trial for the tumor type is in the assessed pool and **nothing is hidden**; ordering is a transparent aid (deterministic screen + cited fit) the clinician can override.
+- ❌ Does **not** claim: that the single best-matching trial is guaranteed to surface to the top. Eligibility free text is messy; any keyword screen has residual recall risk. "Best" is a clinician + patient-preference decision (§11.6, §11.7), not a computed answer.
+
+Molecular features may enter retrieval only as **explicit, clinician-visible, deterministic filters** shaping the candidate *pool*; the per-patient ranking is always the transparent, cited fit. AI never assigns a hidden "match score" during retrieval — that would make the candidate set the AI's judgment rather than the clinician's, i.e. discovery/recommendation.
 
 ## 11.4 Evidence Verification
 
