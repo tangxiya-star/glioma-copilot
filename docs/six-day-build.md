@@ -39,81 +39,101 @@ Matches the full PRD §13, with **Postgres in place of Neo4j** for the hackathon
 
 ---
 
-## Day 1 (Mon Jul 7, half day — starts 12:30 ET) — thinnest vertical slice
+> **Progress note (updated Jul 7):** work moved much faster than the day-by-day plan —
+> Days 1→5 all landed, plus an added UX/credibility refactor, exhaustive candidate
+> triage, real TCGA provenance, and the RxNorm+ChEMBL drug layer (see Day 4.5). Boxes
+> below are checked to reflect what's actually built + committed on `main` and deployed.
+
+## Day 1 — thinnest vertical slice — ✅ DONE
 
 Goal: one real trial, pulled live, shown in a deployed app, with one Claude call working.
 
-- [ ] Hardcode one synthetic glioma patient (molecular report text) in the repo.
-- [ ] Backend: call ClinicalTrials.gov v2 API for `condition=glioma&status=RECRUITING`, pull ~20 trials; expose via a FastAPI endpoint. Frontend: fetch and show titles.
-- [ ] One Claude call: given the report text, extract structured markers (IDH, MGMT, etc.) → display.
-- [ ] Redeploy.
+- [x] Synthetic glioma patient (molecular report) hardcoded (`patient.py`).
+- [x] Backend: ClinicalTrials.gov v2 live fetch (`trials.py`); FastAPI endpoint; frontend shows trials.
+- [x] Claude call: report → structured markers (`POST /api/extract`).
+- [x] Deployed both ends (Vercel + Render).
 
-**Definition of done**: deployed URL shows a synthetic patient's extracted markers + a list of real recruiting glioma trials pulled live.
-
----
-
-## Day 2 (Tue Jul 8) — ingestion, classification, storage
-
-Goal: paste a report → structured profile + WHO classification; trials stored in Postgres.
-
-- [ ] **Extraction agent**: free-text molecular report → structured profile (markers, prior treatments, age, location), each field with the source span it came from.
-- [ ] **WHO CNS5 classification** from the marker set (IDH status → glioblastoma vs astrocytoma vs oligodendroglioma; grade; note if an older "GBM" label is reclassified). Cite the classification logic.
-- [ ] Postgres schema: `patients`, `trials`, `eligibility_results`. Store the pulled trials + patient.
-- [ ] Frontend: a "paste report" box → posts to the backend → shows profile + classification card.
-
-**Definition of done**: paste any synthetic glioma report → correct WHO classification + structured profile; candidate trials stored and queryable.
+**Done**: deployed URL shows a synthetic patient's markers + real recruiting trials pulled live.
 
 ---
 
-## Day 3 (Wed Jul 9) — Trial Fit Assessment (the core)
+## Day 2 — ingestion, classification, storage — ✅ DONE
+
+Goal: report → structured profile + WHO classification; trials stored in Postgres.
+
+- [x] **Extraction** → structured profile with source spans.
+- [x] **Deterministic WHO CNS5 classifier** (`classify.py`): Claude normalizes the report → a hardcoded rule engine decides the diagnosis (grounds "Claude is not the source of truth").
+- [x] Postgres schema (`patients`, `trials`, `eligibility_results`) + storage (`db.py`, `schema.sql`).
+- [x] Frontend: report box → profile + classification card with cited reasoning.
+
+**Done**: any synthetic glioma report → correct WHO classification + profile; trials stored/queryable.
+
+---
+
+## Day 3 — Trial Fit Assessment (the core) — ✅ DONE
 
 Goal: per-criterion eligibility screening for each candidate trial.
 
-- [ ] For each trial, split its eligibility criteria into discrete inclusion/exclusion items.
-- [ ] **Fit assessment**: for each criterion, judge **met / not-met / unknown (needs test X)** against the patient profile; handle **negation** ("no prior bevacizumab"); cite the eligibility text line for each verdict.
-- [ ] **[Tier 1] RxNorm drug normalization**: Claude extracts drug mentions (patient's prior meds + drug names in criteria) → RxNav REST API (`rxcui.json` exact, `approximateTerm.json` fuzzy fallback, `/related?tty=IN` to ingredient) → cache RxCUI in a `drug_norm` Postgres table → **deterministic** drug-identity comparison (so "Avastin" == "bevacizumab" is grounded, not model-guessed). 3-hour rule: if `/related` stalls, ship exact+fuzzy only.
-- [ ] **[Tier 2 stretch] ChEMBL mechanism/class match**: map a normalized drug → mechanism/ATC class (`molecule/search` + `mechanism.json`) to satisfy class-level criteria ("prior anti-VEGF therapy"). Only if Tier 0+1 are solid.
-- [ ] **Clinician view**: per-trial fit table (criteria + verdict + citation), plus which biomarkers matter and logistical barriers (travel/visit frequency from trial locations).
+- [x] Split eligibility into inclusion/exclusion items.
+- [x] **Fit assessment**: each criterion **met / not-met / unknown**, with **negation** handling and the eligibility line **cited** (`POST /api/fit` + `/api/fit/stream`, NDJSON streamed one criterion at a time).
+- [x] Patient-matched retrieval (condition derived from the diagnosis).
+- [~] RxNorm (Tier 1) + ChEMBL (Tier 2) drug normalization — **deferred here, later built in full** (see **Day 4.5**).
 
-**Definition of done**: clinician view shows, for real trials, each eligibility criterion as met/not-met/unknown with a citation — including at least one correctly-flagged "unknown, needs testing."
+**Done**: clinician view shows each criterion as met/not-met/unknown with a citation, incl. a correctly-flagged "unknown, needs testing" (Case 001 EGFR).
 
 ---
 
-## Day 4 (Thu Jul 10) — Verification + investigation (the differentiator)
+## Day 4 — Verification + investigation (the differentiator) — ✅ DONE
 
 Goal: the three-agent loop that catches its own overclaims — the demo money-moment.
 
-- [ ] **Drafting agent**: structured evidence brief per trial (each claim cited).
-- [ ] **Verification agent**: check every claim against the source (trial record / profile); flag and **rewrite overstatements** (e.g. "eligible for Trial B" → "possibly relevant; requires EGFR testing to confirm"). Produce a visible **verification log**.
-- [ ] **Investigation agent**: resolve missing criteria / ambiguous biomarker matches / conflicts; update the brief.
-- [ ] Clinician view: show the verification log with the caught/rewritten claim.
+- [x] **Drafting agent**: cited evidence brief per trial.
+- [x] **Verification agent** (Opus): checks every claim vs the fit assessment; **rewrites overstatements** ("eligible" → "possibly relevant; requires EGFR testing").
+- [x] **Investigation agent**: concrete next steps for unknown/flagged items.
+- [x] Clinician-view verification log (`POST /api/review/stream`, streamed).
 
-**Definition of done**: on a demo case, the verification agent visibly catches a wrong/overstated claim and rewrites it, with the log shown in the UI.
+**Done**: on a demo case the verify agent visibly catches + rewrites an overclaim, log shown in UI.
 
 ---
 
-## Day 5 (Fri Jul 11) — Shared decision workspace
+## Day 4.5 — UX/credibility refactor + exhaustive triage + drug layer — ✅ DONE (added Jul 7)
+
+Not in the original plan; added after reviewing the build with fresh eyes. All committed + deployed.
+
+- [x] **Proactive fit triage** — Analyze auto-runs the real fit across candidates and badges/sorts them (no more one-by-one clicking).
+- [x] **Exhaustive 3-stage candidate triage** (`/api/triage/stream`, PRD §11.3): **Stage 0** pull *every* recruiting trial for the tumor type (not a top-N slice; glioblastoma ≈ 326) → **Stage 1** deterministic, recall-preserving pre-screen (`prescreen.py`) deprioritizes hard conflicts with reasons, never hides → **Stage 2** real fit on the top screen-clear N; UI shows "deep-assessed N of total". Answers "what if the best trial is buried at #50" without becoming a finder.
+- [x] **Flow order fix** — trials gated behind Analyze; case-switch clears stale results; instant in-memory case switching.
+- [x] **Real pathology-report format** — reports rebuilt as integrated neuropathology charts (named IHC clones, assay platforms, WHO CNS5 integrated dx, sign-out).
+- [x] **Real molecular provenance** — each case maps to a **real de-identified TCGA sample** (cBioPortal `lgggbm_tcga_pub`, Cell 2016); real markers + variant calls; UI provenance card + clickable link. Constructed clinical layer clearly labeled.
+- [x] **Preferences out of the chart** — moved to the Day-5 form.
+- [x] **RxNorm (Tier 1) + ChEMBL (Tier 2) drug normalization** (`drugs.py`, from Day 3 backlog): Claude names the drug → RxNorm → canonical ingredient/RxCUI → ChEMBL mechanism/class (Temodar/TMZ → temozolomide; bevacizumab → "VEGF-A inhibitor"). Postgres-cached; `POST /api/drugs/normalize` + `/api/drugs/from_patient`; UI card after Analyze. PRD §12.2.
+- [x] **Docs** — PRD §4.1 (why existing trial matchers don't close the gap), §11.3 (retrieval/screen/triage pipeline + ASCII diagram), §12.2 (drug layer); demo script rewritten to match the real build.
+
+---
+
+## Day 5 — Shared decision workspace — ✅ DONE
 
 Goal: doctor-guided patient view + preferences + shared decision summary.
 
-- [ ] **Plain-language agent**: render the verified per-trial analysis into patient-friendly language (what it tests, why may/may-not fit, what participation involves, what's known/unknown, questions to ask).
-- [ ] **Patient preference capture**: structured form (travel, QoL vs aggressive, caregiver support, visit burden, experimental-therapy interest, financial/lodging).
-- [ ] **Shared decision summary**: options discussed + fit (why yes/why no) + preferences + open questions + next steps, all source-linked. Preferences visibly influence the summary.
-- [ ] Wire the full flow: report → review → fit → verify → explain → preferences → summary.
+- [x] **Plain-language agent** (`POST /api/explain`): renders the verified per-trial fit for the patient (~7th grade); honest (unknowns → questions to confirm, never "you are eligible"; not medical advice). UI: "Explain for patient" card.
+- [x] **Preference capture** form (travel / home state / goal QoL↔aggressive / phase-1 wariness / caregiver / financial) — entered here, **not** in the chart.
+- [x] **Shared-decision summary** (`POST /api/summary`): DETERMINISTIC preference re-rank (`_preference_rerank`) with every adjustment's reason/delta shown, + a plain non-directive note. Preferences **visibly re-rank** without discovery or recommendation.
+- [x] Full flow wired: report → classify → fit(triage) → verify → explain → preferences → summary.
 
-**Definition of done**: full end-to-end flow runs on the deployed URL; changing a preference changes the shared-decision summary.
+**Done**: full end-to-end flow runs on the deployed URL; changing a preference visibly re-ranks the summary.
 
 ---
 
-## Day 6 (Sat–Sun Jul 12–13) — polish, video, submit
+## Day 6 (next) — polish, video, submit
 
 Goal: a submittable package with a safety net. **Deadline: Jul 13, 9:00 PM ET.**
 
-- [ ] Polish UI, harden error handling, lock in the demo case (align synthetic report to real trials — see `demo_data_pack.md`).
-- [ ] Make the GitHub repo **public** (`gh repo edit tangxiya-star/glioma-copilot --visibility public`) and confirm an OSS license file is present.
-- [ ] **Record the 3-min demo video** (adapt `demo_script.md`): report → fit assessment → the verification catch → plain-language + shared decision summary. Re-record until clean; keep a backup take.
+- [x] Deployed and verified end-to-end on the live URLs (front Vercel + back Render).
+- [ ] Polish UI, harden error handling, lock in the demo case (see `demo_data_pack.md` — may need aligning to the current build).
+- [ ] Make the GitHub repo **public** (`gh repo edit tangxiya-star/glioma-copilot --visibility public`) + confirm an OSS license file is present. **(Still private.)**
+- [ ] **Record the 3-min demo video** — follow the rewritten `demo_script.md` (report → classify → exhaustive triage → fit + verify catch → explain + shared decision). Warm `/health` first (Render sleeps).
 - [ ] Write the **100–200 word summary**.
-- [ ] Submit on the CV platform **with buffer** (aim for Jul 13 afternoon, not 8:55 PM).
+- [ ] Submit on the CV platform **with buffer** (Jul 13 afternoon, not 8:55 PM).
 
 **Definition of done**: video + public repo + summary submitted before the deadline.
 
@@ -121,11 +141,15 @@ Goal: a submittable package with a safety net. **Deadline: Jul 13, 9:00 PM ET.**
 
 ## Cut-line (if behind schedule, drop in this order)
 
-1. ChEMBL mechanism/class match (Tier 2 stretch) — drop first.
-2. RxNorm normalization (Tier 1) → fall back to Claude-only drug matching if the core is at risk.
-3. Investigation agent (keep drafting + verification).
-4. Multiple demo cases → one polished case.
-5. Preference *re-ranking* logic → preferences just annotate the summary.
+> **Moot as of Jul 7 — nothing was cut.** All of the below shipped: ChEMBL + RxNorm
+> (Day 4.5), investigation agent (Day 4), 4 demo cases, and full preference *re-ranking*
+> (Day 5). Kept for reference.
+
+1. ChEMBL mechanism/class match (Tier 2 stretch) — drop first. → **built**.
+2. RxNorm normalization (Tier 1) → fall back to Claude-only drug matching. → **built**.
+3. Investigation agent (keep drafting + verification). → **built**.
+4. Multiple demo cases → one polished case. → **4 cases built**.
+5. Preference *re-ranking* logic → preferences just annotate the summary. → **full re-rank built**.
 6. Fancy UI → plain shadcn/ui components, minimal styling.
 
 **Never cut**: the verification catch (Claude Use), per-criterion fit with citations (Depth), and a deployed working URL + video (Demo). Those are the score.
