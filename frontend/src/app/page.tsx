@@ -672,21 +672,21 @@ export default function Home() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-neutral-800 text-left text-xs text-slate-400">
-                    <th className="py-3 pl-5 pr-3 font-medium">Patient</th>
-                    <th className="py-3 pr-3 font-medium">Age / Sex</th>
-                    <th className="py-3 pr-3 font-medium">Diagnosis</th>
-                    <th className="py-3 pr-3 font-medium">IDH</th>
-                    <th className="py-3 pr-3 font-medium">1p/19q</th>
-                    <th className="py-3 pr-3 font-medium">MGMT</th>
-                    <th className="py-3 pr-3 font-medium">ATRX</th>
-                    <th className="py-3 pr-3 font-medium">Grade</th>
-                    <th className="py-3 pr-3 font-medium">KPS</th>
-                    <th className="py-3 pr-3 font-medium">Site</th>
-                    <th className="py-3 pr-3 font-medium whitespace-nowrap">Status *</th>
-                    <th className="py-3 pr-3 font-medium whitespace-nowrap">Resection *</th>
-                    <th className="py-3 pr-3 font-medium">Steroid *</th>
-                    <th className="py-3 pr-3 font-medium whitespace-nowrap">Location *</th>
-                    <th className="py-3 pr-3 font-medium">Prior therapy</th>
+                    <th className="py-3 pl-5 pr-4 font-medium">Patient</th>
+                    <th className="py-3 pr-4 font-medium">Age / Sex</th>
+                    <th className="py-3 pr-4 font-medium">Diagnosis</th>
+                    <th className="py-3 pr-4 font-medium">IDH</th>
+                    <th className="py-3 pr-4 font-medium">1p/19q</th>
+                    <th className="py-3 pr-4 font-medium">MGMT</th>
+                    <th className="py-3 pr-4 font-medium">ATRX</th>
+                    <th className="py-3 pr-4 font-medium">Grade</th>
+                    <th className="py-3 pr-4 font-medium">KPS</th>
+                    <th className="py-3 pr-4 font-medium">Site</th>
+                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Status *</th>
+                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Resection *</th>
+                    <th className="py-3 pr-4 font-medium">Steroid *</th>
+                    <th className="py-3 pr-4 font-medium whitespace-nowrap">Location *</th>
+                    <th className="py-3 pr-4 font-medium">Prior therapy</th>
                     <th className="py-3 pr-5 font-medium"></th>
                   </tr>
                 </thead>
@@ -702,41 +702,41 @@ export default function Home() {
                         onClick={() => openPatient(p.id)}
                         className="cursor-pointer border-b border-slate-100 dark:border-neutral-900 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20"
                       >
-                        <td className="py-3 pl-5 pr-3">
+                        <td className="py-3 pl-5 pr-4 align-top">
                           <span className="font-mono text-xs text-slate-500">
                             {m.sample_id ?? p.provenance?.sample_id ?? p.id}
                           </span>
                         </td>
-                        <td className="py-3 pr-3 whitespace-nowrap">
+                        <td className="py-3 pr-4 align-top whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
                           {m.AGE ?? "?"} / {m.SEX ?? "?"}
                         </td>
-                        <td className="py-3 pr-3">{(m.HISTOLOGICAL_DIAGNOSIS ?? "").split("(")[0]}</td>
-                        <td className="py-3 pr-3">{m.IDH_STATUS ?? "—"}</td>
-                        <td className="py-3 pr-3">{m.IDH_CODEL_SUBTYPE ?? "—"}</td>
-                        <td className="py-3 pr-3">{m.MGMT_PROMOTER_STATUS ?? "—"}</td>
-                        <td className="py-3 pr-3">{m.ATRX_STATUS ?? "—"}</td>
-                        <td className="py-3 pr-3">{m.GRADE ?? "—"}</td>
-                        <td className="py-3 pr-3 whitespace-nowrap">
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{(m.HISTOLOGICAL_DIAGNOSIS ?? "").split("(")[0]}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.IDH_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.IDH_CODEL_SUBTYPE ?? "—"}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.MGMT_PROMOTER_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.ATRX_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.GRADE ?? "—"}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.performance_kps ?? "—"}
                         </td>
-                        <td className="py-3 pr-3 text-xs text-slate-500">
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.site ?? "—"}
                         </td>
-                        <td className="py-3 pr-3 text-xs italic text-slate-500">
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.status ?? "—"}
                         </td>
-                        <td className="py-3 pr-3 text-xs italic text-slate-500">
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.resection ?? "—"}
                         </td>
-                        <td className="py-3 pr-3 text-xs italic text-slate-500 whitespace-nowrap">
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.steroid ?? "—"}
                         </td>
-                        <td className="py-3 pr-3 text-xs italic text-slate-500">
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.location ?? "—"}
                         </td>
-                        <td className="py-3 pr-3 text-xs text-slate-500">{tx || "—"}</td>
-                        <td className="py-3 pr-5 text-right">
-                          <span className="text-xs font-medium text-indigo-600">Analyze →</span>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{tx || "—"}</td>
+                        <td className="py-3 pr-5 align-top text-right">
+                          <span className="text-sm font-medium text-indigo-600">Analyze →</span>
                         </td>
                       </tr>
                     );
@@ -745,9 +745,9 @@ export default function Home() {
               </table>
               <p className="px-5 py-3 text-[11px] text-slate-400">
                 Real de-identified TCGA patients (all recorded alive) — molecular from cBioPortal,
-                treatment + KPS/site from NIH GDC/cBioPortal. <span className="italic">* italic =
-                illustrative clinical layer (constructed, not in public data — recurrence, resection,
-                steroid, location).</span> Click a row to analyze. Survival is never shown.
+                treatment + KPS/site from NIH GDC/cBioPortal. Columns marked <span className="font-medium">*</span>
+                (Status, Resection, Steroid, Location) are an illustrative clinical layer —
+                constructed, not in public data. Click a row to analyze. Survival is never shown.
               </p>
             </div>
           )}
