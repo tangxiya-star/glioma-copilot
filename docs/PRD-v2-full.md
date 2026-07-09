@@ -40,7 +40,7 @@ The bottleneck is **not** finding trials (clinicians and coordinators largely kn
 
 ### 4.1 Why existing trial-matching tools don't close this gap
 
-Clinicians already have trial *matchers* — ClinicalTrials.gov advanced search, genomic matchers (e.g. MatchMiner), and patient-facing services (TrialJectory, Leal Health). They are good at **discovery**: filter by a few **structured** fields (condition, a biomarker like IDH, phase, location) and return a candidate list. We deliberately **do not compete on discovery** — we even take the candidate pool exhaustively (§11.3) and call it scoping, not matching.
+Clinicians already have trial *matchers* — ClinicalTrials.gov advanced search, genomic matchers (e.g. MatchMiner), and patient-facing services (TrialJectory, Leal Health, and in glioma specifically the **National Brain Tumor Society AI Clinical Trial Finder**). They are good at **discovery**: filter by a few **structured** fields (condition, a biomarker like IDH, phase, location) and return a candidate list. We deliberately **do not compete on discovery** — we even take the candidate pool exhaustively (§11.3) and call it scoping, not matching.
 
 The gap those tools leave is the **"last mile" the clinician still does by hand** after the list appears:
 
@@ -51,7 +51,21 @@ The gap those tools leave is the **"last mile" the clinician still does by hand*
 
 **So the gap we fill is everything *after* the match list:** read the whole record against the whole eligibility (incl. free text) with per-criterion citations, surface what's unknown/missing, self-check to catch over-claims, then translate to plain language and support a preference-aware shared decision. From *"these trials may be relevant"* → *"why this one may or may not fit **this** patient, what's still missing, and how you two decide."*
 
-#### 4.1.1 Why not just a deterministic rule engine (if-statements)?
+#### 4.1.1 The closest incumbent: NBTS Finder = Ancora.ai (and why a clinician can't just use it)
+
+The nearest existing tool in glioma is the **NBTS Clinical Trial Finder** (`braintumor.org/trials/`) — but on inspection it is a **white-label of `Ancora.ai`** (the page embeds Ancora in an iframe and states "powered by Ancora.ai"). So the real incumbent is **Ancora.ai**, a dedicated AI trial-matching company — we treat it as a serious, well-built product, not a naive one, and we do *not* duplicate it. The key point is that Ancora is aimed at a **different job and a different user** than we are.
+
+Per Ancora's own description of how it works, its flow is: **Quick Search** (condition + location → first results in seconds) → **Refine Results** (a **~2-minute patient questionnaire**) → **Register a profile** → **Connect to Trial** (contact sites, track progress toward *enrollment*). It is explicitly **patient-facing** (accounts, "your data", HIPAA/GDPR, right-to-be-forgotten, connect-to-site). Ancora even frames its own value as *"From Patient Interest to Enrollment: Bridging the 'Last Mile'"* — i.e. its "last mile" is **patient interest → recruitment/enrollment**, a genuinely different last mile from ours.
+
+So the differentiation is not "our eligibility logic is deeper than theirs" (we make no claim about Ancora's internal matching depth). It is a difference of **user, input, and job** — the axes that are directly observable:
+
+- **Different user.** Ancora is for a **patient/caregiver** doing self-service discovery; we are for a **clinician** guiding review and a shared decision.
+- **Different input granularity.** Ancora runs off a coarse **condition+location quick search + a 2-minute questionnaire**; our fit assessment runs against the **structured record + molecular report**, which is what makes judgments like "EGFR untested → this criterion is *unknown*, order the test" possible at all.
+- **Different last mile / product.** Ancora's last mile is **discovery → connection → enrollment** (recruitment); ours is **verify → explain → document** — a cited per-criterion fit assessment, self-checked for over-claims, rendered in plain language, and captured as an archivable shared-decision note.
+
+**One-line positioning:** *Ancora (via NBTS) helps a patient **discover** trials and get **connected toward enrollment**; we help a clinician **verify, explain, and document** whether a specific trial fits **this** patient. Their last mile is recruitment; ours is clinical review and shared decision.*
+
+#### 4.1.2 Why not just a deterministic rule engine (if-statements)?
 
 The obvious objection: age, KPS, biomarkers are fixed values — why not parse the thresholds and run `if patient.kps >= trial.min_kps`? A rule engine *would* be better where it applies (faster, cheaper, auditable), and we **do** use it there — the Stage-1 pre-screen (§11.3) is pure deterministic code, no LLM, for the reliably-structured, high-frequency patterns (IDH type, 1p/19q, prior-drug **class** via ChEMBL mechanism).
 
@@ -639,7 +653,7 @@ recurrence-directed treatment · **clinical trials joined**. Our panel mirrors t
 §12.5: real where public data supports it (age/sex/location-coarse/status/functional-KPS/pathology/
 gene/MGMT/resection/treatment), and a small labeled illustrative layer only where it does not
 (steroid dose, precise sub-lobar location). This is the evidence for the "we reproduce the real
-manual workflow" thesis (§4.1.1): real clinicians and patient groups keep exactly this kind of
+manual workflow" thesis (§4.1.2): real clinicians and patient groups keep exactly this kind of
 column-by-column table and match trials against it by hand.
 
 ---

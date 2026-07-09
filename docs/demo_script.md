@@ -13,11 +13,19 @@ before recording — free tier sleeps ~15 min).
 
 ## 0. The 20-second hook (say this first)
 
-> "Finding glioma trials is largely solved — clinicians know what's recruiting. The
-> bottleneck is the review-and-decide work *after* the list: does *this* patient
-> actually meet *all* the eligibility, what's still missing, and how do you and the
-> patient decide together. Our copilot does that — over a **real** molecular profile,
-> with every fit judgment cited and self-checked."
+> "Finding glioma trials is largely solved — clinicians know what's recruiting, and
+> tools like the National Brain Tumor Society's AI finder already match patients to a
+> ranked list. The bottleneck is the review-and-decide work *after* the list: does
+> *this* patient actually meet *all* the eligibility, what's still missing, and how do
+> you and the patient decide together. Our copilot does that — over a **real** molecular
+> profile, with every fit judgment cited and self-checked."
+
+**Optional one-liner if a judge raises NBTS:** "The NBTS finder is actually Ancora.ai
+white-labeled — a solid, dedicated matcher. But it's a *patient* tool: a 2-minute
+questionnaire that helps someone *discover* trials and get *connected toward enrollment*.
+We're a *clinician* tool for the opposite end — verifying, explaining, and documenting
+whether a specific trial fits *this* patient's record. Their last mile is recruitment;
+ours is clinical review." (See PRD §4.1.1.)
 
 Why it wins: it's **Claude Use + Depth** in a place with real clinical stakes — not a
 prettier trial search.

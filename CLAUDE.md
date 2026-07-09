@@ -83,7 +83,7 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 > - **UI redesigned as a clinical dashboard** (sidebar, indigo/slate, cards, stat tiles); 3 views:
 >   📋 Patient panel → ① Clinician review → ② Shared decision. **Live case loader** (`/api/case/from_tcga`,
 >   any real TCGA barcode). NCT ids link out to ClinicalTrials.gov.
-> - **Docs**: PRD §4.1 (vs matchers), §4.1.1 (why LLM not a rule engine), §11.3 (retrieval pipeline +
+> - **Docs**: PRD §4.1 (vs matchers), §4.1.1 (vs NBTS finder = Ancora.ai white-label), §4.1.2 (why LLM not a rule engine), §11.3 (retrieval pipeline +
 >   ASCII), §12.2 (RxNorm+ChEMBL), §12.5(+.1) feature table + real-registry calibration; `demo_script.md`
 >   rewritten to match the build.
 > - **Honesty rule (new):** do NOT import the user's private WeChat patient-group registry xlsx (no

@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "scope": "WHO CNS5 adult-type diffuse glioma",
+    "generation_method": "Claude Science literature map",
+    "disclaimer": "Cited evidence synthesis for clinician decision support and not medical advice. Prognosis figures are population ranges, not individual predictions."
+  },
+  "entities": [
+    {
+      "id": "gbm_idhwt",
+      "who_cns5_name": "Glioblastoma, IDH-wildtype",
+      "who_grade": 4,
+      "defining_molecular_features": [
+        "IDH-wildtype status (no IDH1/IDH2 mutation) is required",
+        "Grade 4 assigned by microvascular proliferation and/or necrosis, OR by molecular criteria even without them: TERT promoter mutation, EGFR amplification, or combined gain of whole chromosome 7 and loss of whole chromosome 10 (+7/-10)"
+      ],
+      "classification_basis": "WHO CNS5 restricts 'glioblastoma' to IDH-wildtype astrocytic tumors. An IDH-wildtype, histologically lower-grade diffuse astrocytoma is diagnosed as grade 4 glioblastoma if it carries any of TERT promoter mutation, EGFR amplification, or +7/-10 (cIMPACT-NOW update 3).",
+      "clinical_significance": "Most common and most aggressive adult diffuse glioma; the molecular grade-4 criteria capture aggressive tumors that would otherwise be undergraded on histology alone.",
+      "confidence": "established",
+      "uncertainty_notes": "The three molecular grade-4 markers are treated as equivalent in guidelines, but their independent prognostic weight in tumors lacking histologic anaplasia continues to be refined.",
+      "citations": [
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021},
+        {"pmid": "30259105", "doi": "10.1007/s00401-018-1913-0", "source": "cIMPACT-NOW update 3", "title": "cIMPACT-NOW update 3: recommended diagnostic criteria for 'Diffuse astrocytic glioma, IDH-wildtype, with molecular features of glioblastoma, WHO grade IV'", "year": 2018},
+        {"pmid": "26061753", "doi": "10.1056/NEJMoa1407279", "source": "NEJM", "title": "Glioma Groups Based on 1p/19q, IDH, and TERT Promoter Mutations in Tumors", "year": 2015}
+      ]
+    },
+    {
+      "id": "astro_idhmut",
+      "who_cns5_name": "Astrocytoma, IDH-mutant",
+      "who_grade": "2-4",
+      "defining_molecular_features": [
+        "IDH1 or IDH2 mutation",
+        "ATRX loss and/or TP53 mutation typical; absence of 1p/19q codeletion (distinguishes from oligodendroglioma)",
+        "CDKN2A/B homozygous deletion defines WHO grade 4 within this entity regardless of histology"
+      ],
+      "classification_basis": "WHO CNS5 groups IDH-mutant astrocytomas as a single entity graded 2-4. Grading is integrated: CDKN2A/B homozygous deletion mandates grade 4 even without necrosis or microvascular proliferation.",
+      "clinical_significance": "Better prognosis than IDH-wildtype glioblastoma at matched grade; grade and CDKN2A/B status stratify outcome and increasingly guide management.",
+      "confidence": "established",
+      "uncertainty_notes": "Optimal grade cutoffs and the full set of grade-4 molecular markers within IDH-mutant astrocytoma remain under active refinement.",
+      "citations": [
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021},
+        {"pmid": "19228619", "doi": "10.1056/NEJMoa0808710", "source": "NEJM", "title": "IDH1 and IDH2 mutations in gliomas", "year": 2009},
+        {"pmid": "29687258", "doi": "10.1007/s00401-018-1849-4", "source": "Acta Neuropathologica", "title": "Novel, improved grading system(s) for IDH-mutant astrocytic gliomas", "year": 2018},
+        {"pmid": "35973817", "doi": "10.1093/neuonc/noac205", "source": "Neuro-Oncology", "title": "Translational significance of CDKN2A/B homozygous deletion in IDH-mutant astrocytoma", "year": 2023}
+      ]
+    },
+    {
+      "id": "oligo_idhmut_codel",
+      "who_cns5_name": "Oligodendroglioma, IDH-mutant and 1p/19q-codeleted",
+      "who_grade": "2-3",
+      "defining_molecular_features": [
+        "IDH1 or IDH2 mutation AND whole-arm codeletion of 1p and 19q (both required)",
+        "Frequent TERT promoter mutation; ATRX and TP53 typically retained/wildtype"
+      ],
+      "classification_basis": "WHO CNS5 requires BOTH IDH mutation and 1p/19q codeletion for the diagnosis; graded 2 or 3. Codeletion is a defining, not merely prognostic, feature.",
+      "clinical_significance": "Best prognosis of the three adult-type diffuse gliomas and the most chemosensitive; 1p/19q codeletion predicts benefit from PCV chemotherapy added to radiotherapy.",
+      "confidence": "established",
+      "uncertainty_notes": "Molecular grade-4 criteria applied to astrocytomas are not established for codeleted oligodendroglioma; a formal WHO grade 4 is not currently defined for this entity.",
+      "citations": [
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021},
+        {"pmid": "23071247", "doi": "10.1200/JCO.2012.43.2674", "source": "J Clin Oncol (RTOG 9402)", "title": "Phase III trial of chemoradiotherapy for anaplastic oligodendroglioma: long-term results of RTOG 9402", "year": 2013},
+        {"pmid": "23071237", "doi": "10.1200/JCO.2012.43.2229", "source": "J Clin Oncol (EORTC 26951)", "title": "Adjuvant procarbazine, lomustine, and vincristine chemotherapy in newly diagnosed anaplastic oligodendroglioma: long-term follow-up of EORTC brain tumor group study 26951", "year": 2013}
+      ]
+    }
+  ],
+  "biomarkers": [
+    {"id": "idh", "name": "IDH1 / IDH2 mutation", "what_it_is": "Point mutations (most commonly IDH1 R132H) in isocitrate dehydrogenase producing the oncometabolite D-2-hydroxyglutarate, which reshapes the tumor epigenome.", "clinical_significance": "The top-level branch point of adult diffuse glioma classification; IDH-mutant tumors have markedly better outcomes than IDH-wildtype at matched grade.", "eligibility_role": "stratification", "relevant_entities": ["gbm_idhwt", "astro_idhmut", "oligo_idhmut_codel"], "eligibility_notes": "Appears as inclusion/exclusion by entity (e.g., 'IDH-wildtype glioblastoma' required, or 'IDH-mutant' required for IDH-inhibitor trials) and as a stratification factor.", "assay_methods": ["IHC for IDH1 R132H", "DNA sequencing (Sanger / NGS) for non-canonical IDH1/IDH2 variants"], "confidence": "established", "uncertainty_notes": "IHC detects only canonical R132H; sequencing is required to exclude IDH mutation in younger patients or IHC-negative cases.", "citations": [
+        {"pmid": "19228619", "doi": "10.1056/NEJMoa0808710", "source": "NEJM", "title": "IDH1 and IDH2 mutations in gliomas", "year": 2009},
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021}
+      ]},
+    {"id": "mgmt", "name": "MGMT promoter methylation", "what_it_is": "Epigenetic silencing of the MGMT DNA-repair gene, reducing removal of temozolomide-induced O6-methylguanine lesions.", "clinical_significance": "Predictive of temozolomide benefit and prognostic in glioblastoma; methylated tumors respond better to alkylating chemotherapy.", "eligibility_role": "stratification", "relevant_entities": ["gbm_idhwt"], "eligibility_notes": "Commonly a stratification factor in newly diagnosed GBM trials; sometimes an inclusion criterion (methylated-only or unmethylated-only cohorts).", "assay_methods": ["Methylation-specific PCR (MSP)", "Pyrosequencing", "Methylation array"], "confidence": "established", "uncertainty_notes": "No universal assay cutoff; borderline/low-level methylation is interpreted inconsistently across labs and platforms.", "citations": [
+        {"pmid": "15758010", "doi": "10.1056/NEJMoa043331", "source": "NEJM", "title": "MGMT gene silencing and benefit from temozolomide in glioblastoma", "year": 2005},
+        {"pmid": "15758009", "doi": "10.1056/NEJMoa043330", "source": "NEJM", "title": "Radiotherapy plus concomitant and adjuvant temozolomide for glioblastoma", "year": 2005},
+        {"pmid": "26295302", "doi": "10.5414/np300904", "source": "Clin Neuropathol", "title": "Clinical Neuropathology practice guide 5-2015: MGMT methylation pyrosequencing in glioblastoma", "year": 2015}
+      ]},
+    {"id": "egfr", "name": "EGFR (amplification / EGFRvIII)", "what_it_is": "EGFR gene amplification and the constitutively active EGFRvIII deletion variant, common oncogenic drivers in IDH-wildtype glioblastoma.", "clinical_significance": "EGFR amplification is one of the molecular criteria defining grade-4 IDH-wildtype glioblastoma; EGFRvIII is a tumor-specific target for CAR-T and other immunotherapies.", "eligibility_role": "inclusion", "relevant_entities": ["gbm_idhwt"], "eligibility_notes": "An inclusion/enrichment criterion in EGFR-targeted trials ('EGFR-amplified' or 'EGFRvIII-positive'); also contributes to molecular grade-4 assignment.", "assay_methods": ["FISH for amplification", "NGS / DNA copy-number", "IHC or RT-PCR for EGFRvIII"], "confidence": "established", "uncertainty_notes": "EGFRvIII expression is spatially heterogeneous and can be lost under targeted pressure; independent prognostic value of EGFR status is debated.", "citations": [
+        {"pmid": "29321659", "doi": "10.1038/s41388-017-0045-7", "source": "Oncogene", "title": "Epidermal growth factor receptor and EGFRvIII in glioblastoma: signaling pathways and targeted therapies", "year": 2018},
+        {"pmid": "25846813", "doi": "10.1111/ane.12401", "source": "Acta Neurol Scand", "title": "Prognostic value of epidermal growth factor receptor amplification and EGFRvIII in glioblastoma", "year": 2015},
+        {"pmid": "30259105", "doi": "10.1007/s00401-018-1913-0", "source": "cIMPACT-NOW update 3", "title": "cIMPACT-NOW update 3: recommended diagnostic criteria for 'Diffuse astrocytic glioma, IDH-wildtype, with molecular features of glioblastoma, WHO grade IV'", "year": 2018}
+      ]},
+    {"id": "codel_1p19q", "name": "1p/19q codeletion", "what_it_is": "Combined whole-arm loss of chromosomes 1p and 19q, arising from an unbalanced translocation.", "clinical_significance": "Defining feature of oligodendroglioma (with IDH mutation) and predictive of benefit from PCV chemotherapy added to radiotherapy.", "eligibility_role": "inclusion", "relevant_entities": ["oligo_idhmut_codel"], "eligibility_notes": "Used to confirm/require the oligodendroglioma diagnosis or to exclude it; appears as 'IDH-mutant, 1p/19q-codeleted' or its negation.", "assay_methods": ["FISH", "NGS-based copy-number", "array CGH / SNP array"], "confidence": "established", "uncertainty_notes": "Partial (non-whole-arm) 1p/19q loss does not qualify and can mislead FISH; whole-arm confirmation is preferred.", "citations": [
+        {"pmid": "23071247", "doi": "10.1200/JCO.2012.43.2674", "source": "J Clin Oncol (RTOG 9402)", "title": "Phase III trial of chemoradiotherapy for anaplastic oligodendroglioma: long-term results of RTOG 9402", "year": 2013},
+        {"pmid": "23071237", "doi": "10.1200/JCO.2012.43.2229", "source": "J Clin Oncol (EORTC 26951)", "title": "Adjuvant procarbazine, lomustine, and vincristine chemotherapy in newly diagnosed anaplastic oligodendroglioma: long-term follow-up of EORTC brain tumor group study 26951", "year": 2013},
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021}
+      ]},
+    {"id": "atrx", "name": "ATRX", "what_it_is": "Chromatin-remodeling gene; loss-of-function mutation leads to loss of nuclear ATRX protein and the alternative-lengthening-of-telomeres phenotype.", "clinical_significance": "ATRX loss supports an astrocytic, IDH-mutant lineage and helps distinguish astrocytoma from oligodendroglioma (which retains ATRX).", "eligibility_role": "prognostic", "relevant_entities": ["astro_idhmut"], "eligibility_notes": "Rarely an explicit eligibility gate; used diagnostically to define the entity a trial enrolls.", "assay_methods": ["IHC (loss of nuclear staining)", "DNA sequencing (NGS)"], "confidence": "established", "uncertainty_notes": "ATRX IHC can be technically difficult to interpret; mosaic or retained staining does not fully exclude mutation.", "citations": [
+        {"pmid": "26210286", "doi": "10.18632/oncotarget.4497", "source": "Oncotarget", "title": "IDH mutation, 1p19q codeletion and ATRX loss in WHO grade II gliomas", "year": 2015},
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021}
+      ]},
+    {"id": "tp53", "name": "TP53 mutation", "what_it_is": "Mutation of the TP53 tumor-suppressor gene, frequent in IDH-mutant astrocytoma.", "clinical_significance": "Together with ATRX loss, supports the IDH-mutant astrocytoma lineage; largely mutually exclusive with 1p/19q codeletion.", "eligibility_role": "prognostic", "relevant_entities": ["astro_idhmut"], "eligibility_notes": "Used diagnostically rather than as a stand-alone eligibility criterion.", "assay_methods": ["IHC (surrogate for mutation)", "DNA sequencing (NGS)"], "confidence": "established", "uncertainty_notes": "IHC over-/under-expression is only a surrogate; sequencing confirms mutation status.", "citations": [
+        {"pmid": "26824661", "doi": "10.1016/j.cell.2015.12.028", "source": "Cell", "title": "Molecular Profiling Reveals Biologically Discrete Subsets and Pathways of Progression in Diffuse Glioma", "year": 2016},
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021}
+      ]},
+    {"id": "tert", "name": "TERT promoter mutation", "what_it_is": "Hotspot mutations (C228T/C250T) in the TERT promoter that reactivate telomerase.", "clinical_significance": "In IDH-wildtype astrocytic tumors, one of the molecular criteria defining grade-4 glioblastoma; also frequent in codeleted oligodendroglioma. Prognostic effect is context-dependent.", "eligibility_role": "stratification", "relevant_entities": ["gbm_idhwt", "oligo_idhmut_codel"], "eligibility_notes": "Contributes to molecular grade-4 GBM diagnosis; less often an explicit trial gate.", "assay_methods": ["DNA sequencing (Sanger / NGS)", "allele-specific / ddPCR"], "confidence": "established", "uncertainty_notes": "Prognostic direction differs by IDH and 1p/19q context - adverse in IDH-wildtype astrocytoma but not uniformly so elsewhere; evolving evidence.", "citations": [
+        {"pmid": "26061753", "doi": "10.1056/NEJMoa1407279", "source": "NEJM", "title": "Glioma Groups Based on 1p/19q, IDH, and TERT Promoter Mutations in Tumors", "year": 2015},
+        {"pmid": "33547950", "doi": "10.1007/s00432-021-03536-3", "source": "J Cancer Res Clin Oncol", "title": "Human TERT promoter mutations as a prognostic biomarker in glioma", "year": 2021},
+        {"pmid": "30259105", "doi": "10.1007/s00401-018-1913-0", "source": "cIMPACT-NOW update 3", "title": "cIMPACT-NOW update 3: recommended diagnostic criteria for 'Diffuse astrocytic glioma, IDH-wildtype, with molecular features of glioblastoma, WHO grade IV'", "year": 2018}
+      ]},
+    {"id": "cdkn2ab", "name": "CDKN2A/B homozygous deletion", "what_it_is": "Biallelic (homozygous) deletion of the CDKN2A/CDKN2B tumor-suppressor locus on 9p21.", "clinical_significance": "In IDH-mutant astrocytoma, homozygous deletion mandates WHO grade 4 and marks a substantially worse prognosis.", "eligibility_role": "stratification", "relevant_entities": ["astro_idhmut"], "eligibility_notes": "Increasingly captured for grading/stratification of IDH-mutant astrocytoma cohorts.", "assay_methods": ["NGS / DNA copy-number", "FISH", "methylation-array-derived copy-number"], "confidence": "established", "uncertainty_notes": "Heterozygous loss does not carry the same grade-4 implication; assay sensitivity for true homozygous deletion varies.", "citations": [
+        {"pmid": "35973817", "doi": "10.1093/neuonc/noac205", "source": "Neuro-Oncology", "title": "Translational significance of CDKN2A/B homozygous deletion in IDH-mutant astrocytoma", "year": 2023},
+        {"pmid": "29687258", "doi": "10.1007/s00401-018-1849-4", "source": "Acta Neuropathologica", "title": "Novel, improved grading system(s) for IDH-mutant astrocytic gliomas", "year": 2018},
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021}
+      ]}
+  ],
+  "drug_class_exclusions": [
+    {"id": "anti_vegf", "mechanism_class": "VEGF-A inhibitor / anti-angiogenic", "example_drugs": ["bevacizumab", "aflibercept", "cediranib"], "why_excluded": "Prior anti-VEGF therapy confounds MRI response assessment (pseudoresponse from vascular normalization), can alter recurrence biology, and overlaps with bleeding/wound-healing and hypertension toxicities; many trials therefore exclude prior bevacizumab or use it as a stratifier.", "typical_criterion_wording": ["Prior treatment with bevacizumab or other anti-VEGF/anti-angiogenic agents", "No prior VEGF/VEGFR-targeted therapy for the current tumor", "Prior bevacizumab allowed only if ...", "Bevacizumab-naive required"], "confidence": "established", "uncertainty_notes": "Bevacizumab did not extend overall survival in newly diagnosed GBM (AVAglio, RTOG 0825) though it improved progression-free survival; whether prior exposure should exclude vs stratify varies by trial design.", "citations": [
+        {"pmid": "24552318", "doi": "10.1056/NEJMoa1308345", "source": "NEJM (AVAglio)", "title": "Bevacizumab plus radiotherapy-temozolomide for newly diagnosed glioblastoma", "year": 2014},
+        {"pmid": "24552317", "doi": "10.1056/NEJMoa1308573", "source": "NEJM (RTOG 0825)", "title": "A randomized trial of bevacizumab for newly diagnosed glioblastoma", "year": 2014}
+      ]}
+  ],
+  "population_prognosis": [
+    {"entity_id": "gbm_idhwt", "measure": "median overall survival under standard care (maximal safe resection + radiotherapy with concurrent/adjuvant temozolomide)", "population_range": "~15-16 months median OS in the pivotal trial population; roughly 12-15 months in unselected real-world cohorts", "modifiers": ["MGMT-methylated tumors survive substantially longer than unmethylated", "adding tumor-treating fields to maintenance TMZ improved median OS to ~20-21 months in trial", "younger age and higher performance status favorable"], "is_population_level": true, "not_for_individual_prediction": true, "uncertainty_notes": "Trial populations are selected and outperform real-world cohorts; figures are population ranges under standard care and must not be read as an individual patient's expected survival.", "citations": [
+        {"pmid": "15758009", "doi": "10.1056/NEJMoa043330", "source": "NEJM", "title": "Radiotherapy plus concomitant and adjuvant temozolomide for glioblastoma", "year": 2005},
+        {"pmid": "15758010", "doi": "10.1056/NEJMoa043331", "source": "NEJM", "title": "MGMT gene silencing and benefit from temozolomide in glioblastoma", "year": 2005},
+        {"pmid": "29260225", "doi": "10.1001/jama.2017.18718", "source": "JAMA", "title": "Effect of Tumor-Treating Fields Plus Maintenance Temozolomide vs Maintenance Temozolomide Alone on Survival in Patients With Glioblastoma", "year": 2017}
+      ]},
+    {"entity_id": "astro_idhmut", "measure": "median overall survival by grade under standard care", "population_range": "Grade 2-3 commonly measured in years to over a decade; grade 4 (incl. CDKN2A/B-deleted) markedly shorter, though still longer than IDH-wildtype glioblastoma at matched grade", "modifiers": ["WHO grade is the dominant modifier", "CDKN2A/B homozygous deletion shortens survival and defines grade 4", "extent of resection and adjuvant chemoradiotherapy"], "is_population_level": true, "not_for_individual_prediction": true, "uncertainty_notes": "Wide survival spread across grades 2-4; ranges are population-level and depend heavily on grade and molecular features - not an individual prediction.", "citations": [
+        {"pmid": "34185076", "doi": "10.1093/neuonc/noab106", "source": "WHO CNS5 2021", "title": "The 2021 WHO Classification of Tumors of the Central Nervous System: a summary", "year": 2021},
+        {"pmid": "29687258", "doi": "10.1007/s00401-018-1849-4", "source": "Acta Neuropathologica", "title": "Novel, improved grading system(s) for IDH-mutant astrocytic gliomas", "year": 2018},
+        {"pmid": "35973817", "doi": "10.1093/neuonc/noac205", "source": "Neuro-Oncology", "title": "Translational significance of CDKN2A/B homozygous deletion in IDH-mutant astrocytoma", "year": 2023}
+      ]},
+    {"entity_id": "oligo_idhmut_codel", "measure": "median overall survival under radiotherapy plus PCV chemotherapy", "population_range": "Longest among adult diffuse gliomas - median OS on the order of ~14 years for anaplastic (grade 3) codeleted tumors treated with RT plus PCV in randomized trials; grade 2 generally longer", "modifiers": ["1p/19q codeletion predicts chemosensitivity and long survival", "adding PCV to radiotherapy improved overall survival", "grade and age"], "is_population_level": true, "not_for_individual_prediction": true, "uncertainty_notes": "Long-term trial estimates (RTOG 9402, EORTC 26951) come from anaplastic cohorts and predate full molecular selection; population ranges, not individual predictions.", "citations": [
+        {"pmid": "23071247", "doi": "10.1200/JCO.2012.43.2674", "source": "J Clin Oncol (RTOG 9402)", "title": "Phase III trial of chemoradiotherapy for anaplastic oligodendroglioma: long-term results of RTOG 9402", "year": 2013},
+        {"pmid": "23071237", "doi": "10.1200/JCO.2012.43.2229", "source": "J Clin Oncol (EORTC 26951)", "title": "Adjuvant procarbazine, lomustine, and vincristine chemotherapy in newly diagnosed anaplastic oligodendroglioma: long-term follow-up of EORTC brain tumor group study 26951", "year": 2013}
+      ]}
+  ],
+  "trial_rationale": [
+    {"nct_id": "NCT05432804", "target_or_mechanism": "Selinexor - selective inhibitor of nuclear export (SINE) blocking XPO1/CRM1 - combined with the alkylator temozolomide in recurrent glioblastoma", "scientific_rationale": "XPO1/CRM1 inhibition traps tumor-suppressor proteins in the nucleus and disrupts oncoprotein export; single-agent selinexor showed CNS penetration and durable responses in a subset of recurrent GBM, supporting combination with temozolomide to enhance alkylator-induced cytotoxicity.", "landmark_evidence": ["Phase II single-agent oral selinexor in recurrent GBM demonstrated intratumoral drug penetration and a subset with durable radiographic response (Lassman et al., Clin Cancer Res 2021, PMID 34728525)", "Temozolomide is the established alkylating backbone from the Stupp regimen (PMID 15758009)"], "confidence": "emerging", "citations": [
+        {"pmid": "34728525", "doi": "10.1158/1078-0432.CCR-21-2225", "source": "Clin Cancer Res", "title": "A Phase II Study of the Efficacy and Safety of Oral Selinexor in Recurrent Glioblastoma", "year": 2022},
+        {"pmid": "15758009", "doi": "10.1056/NEJMoa043330", "source": "NEJM", "title": "Radiotherapy plus concomitant and adjuvant temozolomide for glioblastoma", "year": 2005}
+      ]},
+    {"nct_id": "NCT07089641", "target_or_mechanism": "ERAS-801 - a brain-penetrant small-molecule EGFR inhibitor - in surgically accessible, EGFR-amplified/mutated, IDH-wildtype recurrent glioblastoma", "scientific_rationale": "EGFR amplification/mutation is a dominant oncogenic driver and a molecular grade-4 criterion in IDH-wildtype glioblastoma; prior EGFR inhibitors failed partly due to poor CNS exposure, so a CNS-penetrant EGFR inhibitor is tested with a surgical (window-of-opportunity) design in EGFR-altered tumors to confirm target engagement.", "landmark_evidence": ["EGFR amplification/EGFRvIII biology as a GBM driver and target (PMID 29321659)", "EGFR amplification is one of the molecular grade-4 defining alterations (cIMPACT-NOW update 3, PMID 30259105)"], "confidence": "emerging", "citations": [
+        {"pmid": "29321659", "doi": "10.1038/s41388-017-0045-7", "source": "Oncogene", "title": "Epidermal growth factor receptor and EGFRvIII in glioblastoma: signaling pathways and targeted therapies", "year": 2018},
+        {"pmid": "30259105", "doi": "10.1007/s00401-018-1913-0", "source": "cIMPACT-NOW update 3", "title": "cIMPACT-NOW update 3: recommended diagnostic criteria for 'Diffuse astrocytic glioma, IDH-wildtype, with molecular features of glioblastoma, WHO grade IV'", "year": 2018}
+      ]},
+    {"nct_id": "NCT07209241", "target_or_mechanism": "CART-EGFR-IL13Ralpha2 - bivalent chimeric antigen receptor T cells targeting EGFR and IL13Ralpha2 - in EGFR-amplified recurrent glioblastoma", "scientific_rationale": "Single-target CAR-T against EGFRvIII produced antigen loss and adaptive resistance; dual targeting of EGFR and IL13Ralpha2 addresses antigen heterogeneity and escape, and intrathecal bivalent CAR-T has produced early radiographic responses in recurrent GBM, motivating optimization of dosing/delivery.", "landmark_evidence": ["Single-dose EGFRvIII CAR-T showed antigen loss and adaptive resistance in recurrent GBM (O'Rourke et al., Sci Transl Med 2017, PMID 28724573)", "IL13Ralpha2-targeted CAR-T produced a documented tumor regression (Brown et al., NEJM 2016, PMID 28029927)", "Intrathecal bivalent EGFR/IL13Ralpha2 CAR-T yielded early responses in recurrent GBM (Bagley et al., Nature Medicine 2024, PMID 38480922)"], "confidence": "emerging", "citations": [
+        {"pmid": "28724573", "doi": "10.1126/scitranslmed.aaa0984", "source": "Sci Transl Med", "title": "A single dose of peripherally infused EGFRvIII-directed CAR T cells mediates antigen loss and induces adaptive resistance in patients with recurrent glioblastoma", "year": 2017},
+        {"pmid": "28029927", "doi": "10.1056/NEJMoa1610497", "source": "NEJM", "title": "Regression of Glioblastoma after Chimeric Antigen Receptor T-Cell Therapy", "year": 2016},
+        {"pmid": "38480922", "doi": "10.1038/s41591-024-02893-z", "source": "Nature Medicine", "title": "Intrathecal bivalent CAR T cells targeting EGFR and IL13Ralpha2 in recurrent glioblastoma: phase 1 trial interim results", "year": 2024}
+      ]}
+  ]
+}

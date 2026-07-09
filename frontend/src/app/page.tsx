@@ -1122,6 +1122,11 @@ export default function Home() {
                 </table>
               </div>
 
+              {/* Cited evidence layer (Claude Science → PubMed-verified): sources
+                  next to the assessed trial + the patient's biomarkers. Traceability,
+                  not an explainer. */}
+              <EvidencePanel apiUrl={API_URL} diagnosis={c?.diagnosis} nctId={fit.trial.nct_id} />
+
               {/* Day 4: three-agent verification loop · Day 5: plain-language */}
               <div className="pt-2 flex flex-wrap gap-2">
                 <button
@@ -1580,5 +1585,104 @@ function Chip({ children, cls }: { children: React.ReactNode; cls: string }) {
     <span className={`rounded-full border border-current px-2 py-0.5 text-xs ${cls}`}>
       {children}
     </span>
+  );
+}
+
+// Cited evidence layer — Claude Science generated, PubMed-verified. Deliberately a
+// low-key, collapsed traceability panel (sources next to claims), NOT an explainer
+// that lectures the clinician on settled facts.
+type EvCitation = { pmid: string | null; doi: string | null; source: string; title: string; year: number };
+type EvBiomarker = { id: string; name: string; clinical_significance: string; eligibility_role: string; citations: EvCitation[] };
+type EvidenceResp = {
+  pipeline: { generated_by: string; verified_against: string; citations_verified: number; citations_checked: number };
+  entity: { who_cns5_name: string } | null;
+  biomarkers: EvBiomarker[];
+  population_prognosis: { population_range: string; citations: EvCitation[] } | null;
+  trial_rationale: { nct_id: string; target_or_mechanism: string; scientific_rationale: string; landmark_evidence: string[]; citations: EvCitation[] } | null;
+};
+
+function Cites({ citations }: { citations: EvCitation[] }) {
+  return (
+    <span className="inline-flex flex-wrap gap-1 align-middle">
+      {citations.map((ct, i) =>
+        ct.pmid ? (
+          <a
+            key={i}
+            href={`https://pubmed.ncbi.nlm.nih.gov/${ct.pmid}/`}
+            target="_blank"
+            rel="noreferrer"
+            title={`${ct.title} (${ct.source}, ${ct.year})`}
+            className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] text-indigo-700 hover:underline dark:bg-indigo-950 dark:text-indigo-300"
+          >
+            PMID {ct.pmid}
+          </a>
+        ) : (
+          <span key={i} className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500 dark:bg-neutral-800">
+            {ct.source} ({ct.year})
+          </span>
+        )
+      )}
+    </span>
+  );
+}
+
+function EvidencePanel({ apiUrl, diagnosis, nctId }: { apiUrl: string; diagnosis?: string; nctId?: string }) {
+  const [ev, setEv] = useState<EvidenceResp | null>(null);
+  useEffect(() => {
+    if (!diagnosis && !nctId) return;
+    const q = new URLSearchParams();
+    if (diagnosis) q.set("diagnosis", diagnosis);
+    if (nctId) q.set("nct_id", nctId);
+    fetch(`${apiUrl}/api/evidence?${q.toString()}`)
+      .then((r) => r.json())
+      .then(setEv)
+      .catch(() => setEv(null));
+  }, [apiUrl, diagnosis, nctId]);
+
+  if (!ev) return null;
+  const hasContent = ev.trial_rationale || ev.biomarkers.length > 0 || ev.population_prognosis;
+  if (!hasContent) return null;
+
+  return (
+    <details className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-3 text-sm dark:border-indigo-950 dark:bg-indigo-950/20">
+      <summary className="cursor-pointer select-none font-medium text-indigo-800 dark:text-indigo-300">
+        Evidence &amp; sources
+        <span className="ml-2 text-xs font-normal text-neutral-500">
+          {ev.pipeline.generated_by} · {ev.pipeline.verified_against}-verified {ev.pipeline.citations_verified}/{ev.pipeline.citations_checked}
+        </span>
+      </summary>
+      <div className="mt-3 space-y-3">
+        {ev.trial_rationale && (
+          <div>
+            <p className="text-xs uppercase tracking-wide text-neutral-400">Why this trial</p>
+            <p className="mt-0.5 font-medium">{ev.trial_rationale.target_or_mechanism}</p>
+            <p className="mt-0.5 text-neutral-600 dark:text-neutral-300">{ev.trial_rationale.scientific_rationale}</p>
+            <div className="mt-1"><Cites citations={ev.trial_rationale.citations} /></div>
+          </div>
+        )}
+        {ev.biomarkers.length > 0 && (
+          <div>
+            <p className="text-xs uppercase tracking-wide text-neutral-400">Biomarkers in this patient&apos;s tumor type</p>
+            <ul className="mt-1 space-y-1.5">
+              {ev.biomarkers.map((bm) => (
+                <li key={bm.id}>
+                  <span className="font-medium">{bm.name}</span>
+                  <span className="ml-1 text-[11px] text-neutral-400">({bm.eligibility_role})</span>
+                  <span className="block text-xs text-neutral-500">{bm.clinical_significance}</span>
+                  <div className="mt-0.5"><Cites citations={bm.citations} /></div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {ev.population_prognosis && (
+          <div>
+            <p className="text-xs uppercase tracking-wide text-neutral-400">Population prognosis (range, not an individual prediction)</p>
+            <p className="mt-0.5 text-neutral-600 dark:text-neutral-300">{ev.population_prognosis.population_range}</p>
+            <div className="mt-1"><Cites citations={ev.population_prognosis.citations} /></div>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
