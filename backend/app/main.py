@@ -586,9 +586,20 @@ _VERIFY_SYSTEM = (
     "For overstated/unsupported claims, REWRITE them to match the evidence (e.g. "
     "'eligible for the trial' -> 'possibly relevant; requires EGFR testing to "
     "confirm'). Give a short reason citing the criterion.\n\n"
+    "GROUNDING RULE (do NOT manufacture doubt): you may only downgrade a claim to "
+    "'overstated' or 'unsupported' if you can point to a SPECIFIC criterion in the FIT "
+    "ASSESSMENT that is 'unknown' (for overstated) or 'not_met' (for unsupported). Put "
+    "that exact criterion text in `evidence_line`. If every relevant criterion is 'met', "
+    "the claim is 'supported' — do not soften an eligible verdict without a concrete "
+    "unknown/not_met line. Never turn a 'met' criterion into a doubt. (Softening the "
+    "OVERALL verdict to 'confirm with the trial coordinator' is fine ONLY when driven by "
+    "a real unknown/not_met line — final enrollment is never asserted, but doubt must be "
+    "evidence-backed, not invented.)\n\n"
     "Return STRICT JSON only:\n"
     '{"log": [{"claim": "", "status": "supported|overstated|unsupported", '
-    '"rewrite": "<corrected claim, or same text if supported>", "reason": ""}]}'
+    '"rewrite": "<corrected claim, or same text if supported>", '
+    '"evidence_line": "<exact unknown/not_met criterion this rests on, or empty if supported>", '
+    '"reason": ""}]}'
 )
 
 _INVESTIGATE_SYSTEM = (
@@ -622,6 +633,42 @@ def _compute_fit_items(patient: dict, trial: dict) -> list[dict]:
     )
     parsed = parse_json(text_from(msg)) or {}
     return parsed.get("items", [])
+
+
+def _norm_tokens(s: str) -> set[str]:
+    return {t for t in re.sub(r"[^a-z0-9 ]", " ", (s or "").lower()).split() if len(t) > 2}
+
+
+def _enforce_evidence_grounding(verify: dict, items: list[dict]) -> dict:
+    """Hard guardrail so verify can't manufacture doubt.
+
+    A downgrade to 'overstated'/'unsupported' is kept only if its `evidence_line`
+    actually overlaps a criterion of the matching verdict ('unknown' / 'not_met') in
+    the fit table (the source of truth). A flag grounded in nothing real is reverted to
+    'supported' — the symmetric partner to "don't fake a catch": don't fake a doubt.
+    """
+    verdict_tokens = {"unknown": [], "not_met": []}
+    for it in items:
+        v = it.get("verdict")
+        if v in verdict_tokens:
+            verdict_tokens[v].append(_norm_tokens(it.get("criterion", "")))
+    need = {"overstated": "unknown", "unsupported": "not_met"}
+    for e in verify.get("log", []):
+        status = e.get("status")
+        if status not in need:
+            continue
+        pools = verdict_tokens[need[status]]
+        line = _norm_tokens(e.get("evidence_line", ""))
+        grounded = bool(line) and any(
+            len(line & pool) >= max(2, min(len(line), len(pool)) // 3) for pool in pools
+        )
+        if not grounded:
+            e["status"] = "supported"
+            e["rewrite"] = e.get("claim", e.get("rewrite", ""))
+            e["reason"] = "(doubt dropped: not backed by an unknown/not_met line in the fit table)"
+            e["evidence_line"] = ""
+            e["grounding_reverted"] = True
+    return verify
 
 
 def _fit_digest(items: list[dict]) -> str:
@@ -674,6 +721,8 @@ def review_stream(req: FitRequest):
             f"scrutinize it hardest):\n{json.dumps(claims_to_check)}\n\n"
             f"FIT ASSESSMENT (source of truth):\n{digest}",
         ) or {"log": []}
+        # Hard guardrail: a downgrade must cite a real unknown/not_met line, else revert.
+        verify = _enforce_evidence_grounding(verify, items)
         yield json.dumps({"type": "verify", "verify": verify}) + "\n"
 
         # 3) Investigation agent
