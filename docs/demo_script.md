@@ -103,6 +103,26 @@ filter can't see.
 
 ---
 
+## 4.5 Evidence & sources — the third Claude surface (20s)
+
+Under the fit table, expand **▸ Evidence & sources** — the trial's scientific
+rationale, the patient's biomarkers, and the population prognosis, **each with a
+clickable PMID → PubMed**.
+
+> Talking point (this is the **Claude Use** beat — say it deliberately): "This uses
+> **three Claude surfaces on purpose**: **Claude Code** built the app, the **Claude API**
+> runs these review agents, and **Claude Science** generated this cited evidence layer.
+> And we didn't trust it blindly — we verified **all 23 citations against PubMed: 23/23
+> real, zero hallucinated**. That's the whole product's premise applied to our own
+> pipeline: **Claude reasons, but never gets to be the source of truth.**"
+
+Honesty note (if asked): the badge reads "PubMed-verified 23/23" because we actually ran
+that check — not decoration. The layer is **traceability next to each claim, not an
+explainer** — a clinician already knows why MGMT matters; the value is that every claim
+is sourced.
+
+---
+
 ## 5. Explain for the patient + shared decision (40s)
 
 - Click **🗣 Explain for patient** → a plain-language card (~7th-grade). Note the
@@ -126,8 +146,9 @@ filter can't see.
 > "From a **real** molecular profile to a shared decision: classify with an auditable
 > rule engine, consider **every** recruiting trial, verify against the **full**
 > eligibility with citations, catch the overclaim, explain it plainly, and decide
-> together — every fact traceable. **We don't pick the trial. We make the reasoning
-> trustworthy.**"
+> together — every fact traceable. Built across **three Claude surfaces** — Claude Code,
+> the Claude API, and Claude Science — with the evidence **PubMed-verified**. **We don't
+> pick the trial. We make the reasoning trustworthy.**"
 
 ---
 
@@ -140,6 +161,8 @@ filter can't see.
 - **"Is the ranking a validated eligibility score?"** → No. It's a **transparent heuristic** re-weighting already-assessed trials by stated preferences; every adjustment shows its reason and delta. We deliberately avoid an unsupported "match %".
 - **"Trial data goes stale."** → Trials are pulled **live** from ClinicalTrials.gov on each Analyze; every trial links to its NCT record.
 - **"Did you cherry-pick a few trials?"** → No — we pull **all** recruiting trials for the tumor type and report "deep-assessed N of `<total>`"; screened-out trials stay listed and openable.
+- **"You used Claude Science for the evidence — did you just trust what it generated?"** → No, and that's the point. Claude Science generated the cited evidence layer; we then **verified all 23 PMIDs against the PubMed E-utilities API — 23/23 real, 0 hallucinated** (3 epub/print years corrected to the PubMed canonical). It's the same principle the whole product runs on — **Claude reasons, but is never the source of truth** — applied to our own build pipeline. The badge "PubMed-verified 23/23" is a check we actually ran, not decoration.
+- **"Isn't a 'why this biomarker matters' panel redundant — a neuro-oncologist already knows?"** → Correct, and it's not there to teach. It's **traceability**: every claim the app makes is sourced and clickable, so a skeptical clinician (or judge) can audit it in one click. The genuinely non-obvious content is the **per-trial rationale** and the **uncertainty flags**, not the settled facts.
 
 ---
 
@@ -152,7 +175,11 @@ filter can't see.
 | Report → classification | 0:30 | 1:05 |
 | Exhaustive triage | 0:40 | 1:45 |
 | Per-criterion fit + 3-agent verify | 0:45 | 2:30 |
-| Explain + shared decision | 0:40 | 3:10 |
-| Close | 0:15 | 3:25 |
+| Evidence & sources (3rd Claude surface) | 0:20 | 2:50 |
+| Explain + shared decision | 0:40 | 3:30 |
+| Close | 0:15 | 3:45 |
 
-Trim the Case-004 Depth beat if you need to land under 3:00; keep it for live Q&A.
+Over 3:00 with everything in. To land a tight ~3-min cut, trim the Case-004 Depth beat
+and shorten the shared-decision beat — but **keep the Evidence & sources beat**: the
+"three Claude surfaces + PubMed-verified" line is your strongest **Claude Use** moment
+and is worth the 20s. Keep the trimmed beats for live Q&A.
