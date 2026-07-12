@@ -24,6 +24,7 @@ AGENT_MODELS = {
     "fit": os.getenv("FIT_MODEL", SONNET),            # per-criterion met/not-met/unknown (high volume)
     "draft": os.getenv("DRAFT_MODEL", SONNET),        # evidence brief drafting
     "verify": os.getenv("VERIFY_MODEL", OPUS),        # the money-moment: catch/rewrite overclaims
+    "audit": os.getenv("AUDIT_MODEL", OPUS),          # independent clinician cross-check (decorrelate from Sonnet fit)
     "investigate": os.getenv("INVESTIGATE_MODEL", SONNET),
     "explain": os.getenv("EXPLAIN_MODEL", SONNET),    # plain-language rendering
     "summary": os.getenv("SUMMARY_MODEL", SONNET),    # shared-decision summary
@@ -48,6 +49,7 @@ AGENT_EFFORT = {
     "classify": os.getenv("CLASSIFY_EFFORT", "low"),
     "fit": os.getenv("FIT_EFFORT", "low"),
     "verify": os.getenv("VERIFY_EFFORT", "high"),
+    "audit": os.getenv("AUDIT_EFFORT", "high"),  # independent re-derivation deserves deep reasoning
     "investigate": os.getenv("INVESTIGATE_EFFORT", "medium"),
     "explain": os.getenv("EXPLAIN_EFFORT", "low"),
     "summary": os.getenv("SUMMARY_EFFORT", "medium"),

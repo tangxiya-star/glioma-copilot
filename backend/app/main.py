@@ -611,10 +611,15 @@ _INVESTIGATE_SYSTEM = (
 )
 
 
-def _agent_json(agent: str, system: str, user: str):
-    """One structured agent call -> parsed JSON (or None)."""
+def _agent_json(agent: str, system: str, user: str, max_tokens: int = 4000):
+    """One structured agent call -> parsed JSON (or None).
+
+    max_tokens must cover BOTH the visible JSON and (with adaptive thinking) the
+    thinking tokens — deep-reasoning agents over long inputs need a larger budget
+    or the JSON truncates mid-object and fails to parse.
+    """
     msg = client.messages.create(
-        model=model_for(agent), max_tokens=4000, system=system,
+        model=model_for(agent), max_tokens=max_tokens, system=system,
         messages=[{"role": "user", "content": user}], **tuning_for(agent),
     )
     return parse_json(text_from(msg))
@@ -735,6 +740,156 @@ def review_stream(req: FitRequest):
         ) or {"steps": []}
         yield json.dumps({"type": "investigate", "investigate": investigate}) + "\n"
 
+        yield json.dumps({"type": "done"}) + "\n"
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")
+
+
+# --- Day 6: independent clinician audit (adversarial cross-check of the fit table) ---
+#
+# This is NOT the verify agent. Verify takes the fit table as ground truth and only
+# checks the draft for overclaiming. The AUDIT agent challenges the fit table ITSELF:
+# it re-judges each eligibility criterion from scratch, as an independent board-certified
+# neuro-oncologist grounded in WHO CNS5 — WITHOUT seeing our system's reasoning — then is
+# shown our verdicts only to flag disagreements. Different model (Opus) decorrelates its
+# errors from the Sonnet fit drafter. It catches inconsistency + misreads; it CANNOT catch
+# shared blind spots (both models mis-reading the same line the same way) — a real human is
+# still needed for that. NEVER label its output "clinician-validated".
+
+_AUDIT_INDEPENDENT_SYSTEM = (
+    "You are an INDEPENDENT board-certified neuro-oncologist auditing a clinical-trial "
+    "eligibility screen. You are given ONLY a patient's pathology/clinical report and a "
+    "trial's raw eligibility criteria. Judge the patient against each decision-relevant "
+    "criterion FROM SCRATCH, using your own clinical reasoning grounded in the WHO CNS5 "
+    "(2021) classification and standard neuro-oncology practice. You have NOT seen any "
+    "other system's answer — form your own.\n\n"
+    "For each criterion assign a VERDICT (patient's compatibility with enrolling on that "
+    "line):\n"
+    "  - \"met\": patient satisfies it (for an EXCLUSION, means the patient does NOT have "
+    "the excluding condition — handle negation carefully).\n"
+    "  - \"not_met\": patient clearly fails/violates it.\n"
+    "  - \"unknown\": the report does not contain the needed fact; say what test/info is "
+    "required. Do NOT assume unstated facts.\n\n"
+    "Quote the exact eligibility line in `citation`. Return STRICT JSON only:\n"
+    "{\n"
+    '  "items": [\n'
+    '    {"criterion": "", "kind": "inclusion|exclusion", "verdict": "met|not_met|unknown", '
+    '"citation": "<exact eligibility line>", "rationale": "<your clinical reasoning>"}\n'
+    "  ]\n"
+    "}"
+)
+
+_AUDIT_COMPARE_SYSTEM = (
+    "You are an INDEPENDENT neuro-oncologist reviewer comparing YOUR OWN eligibility "
+    "verdicts (done blind) against the verdicts a screening system produced for the SAME "
+    "patient and trial. Your job is adversarial: surface every place the system may have "
+    "gotten it wrong. Match criteria by meaning, not wording.\n\n"
+    "For each of YOUR criteria, decide agreement with the system's verdict on the same "
+    "criterion:\n"
+    "  - \"agree\": same verdict (met/not_met/unknown).\n"
+    "  - \"disagree\": different verdict — state which is clinically correct and why, "
+    "citing the criterion + the WHO CNS5 / trial rule that decides it.\n"
+    "  - \"system_missing\": a decision-relevant criterion YOU judged that the system did "
+    "not assess at all.\n"
+    "Be fair: if the system is right, say 'agree' — do not manufacture disagreement.\n\n"
+    "Return STRICT JSON only:\n"
+    "{\n"
+    '  "comparisons": [\n'
+    '    {"criterion": "", "your_verdict": "met|not_met|unknown", '
+    '"system_verdict": "met|not_met|unknown|absent", '
+    '"status": "agree|disagree|system_missing", '
+    '"correct_verdict": "<the clinically correct verdict>", '
+    '"reason": "<why, citing the rule>"}\n'
+    "  ],\n"
+    '  "verdict": "<one-line overall: does the system\'s eligibility screen hold up?>"\n'
+    "}"
+)
+
+
+def _audit_scores(comparisons: list[dict]) -> dict:
+    """Agreement rate + counts over the audit comparisons."""
+    total = agree = disagree = missing = 0
+    for c in comparisons:
+        st = c.get("status")
+        if st == "agree":
+            agree += 1
+            total += 1
+        elif st == "disagree":
+            disagree += 1
+            total += 1
+        elif st == "system_missing":
+            missing += 1
+    rate = round(agree / total, 3) if total else None
+    return {
+        "agreement_rate": rate,
+        "agree": agree,
+        "disagree": disagree,
+        "system_missing": missing,
+        "compared": total,
+    }
+
+
+@app.post("/api/audit/stream")
+def audit_stream(req: FitRequest):
+    """Independent clinician audit: blind re-derivation -> compare to our fit table.
+
+    An adversarial cross-check that challenges the fit verdicts themselves (unlike
+    verify, which trusts them). NOT clinician validation — it cannot catch blind spots
+    both models share; a human reviewer is still required.
+    """
+    patient = get_patient(req.patient_id)
+    trial = fetch_trial(req.nct_id)
+    if trial is None:
+        raise HTTPException(status_code=404, detail=f"Trial {req.nct_id} not found")
+    if not trial.get("eligibility"):
+        raise HTTPException(status_code=422, detail="Trial has no eligibility text")
+
+    def gen():
+        trial_meta = {"nct_id": trial["nct_id"], "title": trial["title"], "url": trial["url"]}
+        yield json.dumps({"type": "trial", "trial": trial_meta}) + "\n"
+
+        # Our system's verdicts (reuse if stored, else compute).
+        try:
+            system_items = get_eligibility_results(patient["id"], trial["nct_id"])
+        except Exception:
+            system_items = []
+        if not system_items:
+            yield json.dumps({"type": "stage", "stage": "fit"}) + "\n"
+            system_items = _compute_fit_items(patient, trial)
+
+        # 1) BLIND independent re-derivation — the auditor never sees system_items here.
+        yield json.dumps({"type": "stage", "stage": "independent"}) + "\n"
+        indep = _agent_json(
+            "audit", _AUDIT_INDEPENDENT_SYSTEM,
+            f"PATIENT REPORT:\n{patient['report']}\n\n"
+            f"TRIAL {trial['nct_id']} — {trial['title']}\n"
+            f"ELIGIBILITY CRITERIA:\n{trial['eligibility']}",
+            max_tokens=12000,
+        ) or {"items": []}
+        indep_items = indep.get("items", [])
+        yield json.dumps({"type": "independent", "items": indep_items}) + "\n"
+
+        # 2) Compare — only now is the auditor shown our verdicts.
+        yield json.dumps({"type": "stage", "stage": "compare"}) + "\n"
+        compare = _agent_json(
+            "audit", _AUDIT_COMPARE_SYSTEM,
+            f"YOUR INDEPENDENT VERDICTS:\n{_fit_digest(indep_items)}\n\n"
+            f"SYSTEM VERDICTS (to audit):\n{_fit_digest(system_items)}",
+            max_tokens=12000,
+        ) or {"comparisons": [], "verdict": ""}
+        comparisons = compare.get("comparisons", [])
+        scores = _audit_scores(comparisons)
+        yield json.dumps({
+            "type": "audit",
+            "comparisons": comparisons,
+            "scores": scores,
+            "verdict": compare.get("verdict", ""),
+            "disclaimer": (
+                "Automated independent AI cross-check (Opus, blind re-derivation). "
+                "Catches inconsistencies and misreads; cannot catch blind spots both "
+                "models share. NOT clinician validation."
+            ),
+        }) + "\n"
         yield json.dumps({"type": "done"}) + "\n"
 
     return StreamingResponse(gen(), media_type="application/x-ndjson")
