@@ -70,6 +70,20 @@ def _report(prov: dict, *, specimen: str, prior_therapy: str, overlay: str,
         f"\nCONSTRUCTED CLINICAL LAYER  [illustrative — NOT from TCGA]\n{constructed_clin}\n"
         if constructed_clin else ""
     )
+
+    # A field that is authored (in _constructed) must NOT appear under the REAL header —
+    # it is rendered in the constructed_block instead. Skipping it here keeps the report
+    # internally consistent (e.g. disease status shown once, as constructed, not also as
+    # a contradicting "Newly diagnosed" line from GDC).
+    def _real_line(key, label):
+        return "" if key in _constructed else f"- {label}: {cl.get(key, '—')}\n"
+    clinical_real = (
+        f"- Primary diagnosis: {cl.get('primary_diagnosis', '—')}\n"
+        + _real_line("status", "Disease status")
+        + _real_line("resection", "Resection")
+        + f"- Tumor site: {cl.get('site', '—')}\n"
+        + f"- Performance status: KPS {cl.get('performance_kps', '—')}"
+    )
     return f"""INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT
 (demo chart — REAL molecular + REAL treatment data; a small labeled overlay is marked)
 
@@ -84,11 +98,7 @@ PATIENT / SPECIMEN
 - Specimen: {specimen}
 
 CLINICAL  [REAL — cBioPortal + GDC]
-- Primary diagnosis: {cl.get('primary_diagnosis', '—')}
-- Disease status: {cl.get('status', '—')}
-- Resection: {cl.get('resection', '—')}
-- Tumor site: {cl.get('site', '—')}
-- Performance status: KPS {cl.get('performance_kps', '—')}
+{clinical_real}
 {constructed_block}
 PRIOR THERAPY  [REAL — GDC treatment record for this patient]
 {prior_therapy}
@@ -121,9 +131,9 @@ _PROV_001 = _provenance(
      "AGE": "64", "SEX": "Male",
      "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"},
     clinical={"primary_diagnosis": "Glioblastoma", "site": "Brain, NOS", "performance_kps": "40",
-              "status": "Newly diagnosed", "resection": "Surgical resection",
+              "status": "First recurrence (illustrative clinical course)", "resection": "Surgical resection",
               "steroid": "Dexamethasone 4 mg/day", "location": "Right frontal, supratentorial",
-              "_constructed": ["steroid", "location"]})
+              "_constructed": ["status", "steroid", "location"]})
 CASE_001 = {
     "id": "case-001",
     "label": "Case 001 — 64yo M, glioblastoma IDH-wildtype (TCGA-06-6695)",
@@ -280,9 +290,9 @@ _PROV_004 = _provenance(
      "AGE": "67", "SEX": "Male",
      "mutations": "none reported in IDH1/ATRX/TERT/EGFR/TP53 panel"},
     clinical={"primary_diagnosis": "Glioblastoma", "site": "Brain, NOS", "performance_kps": "60",
-              "status": "Newly diagnosed", "resection": "Surgical resection",
+              "status": "First recurrence (illustrative clinical course)", "resection": "Surgical resection",
               "steroid": "Dexamethasone 2 mg/day", "location": "Left parietal, supratentorial",
-              "_constructed": ["steroid", "location"]})
+              "_constructed": ["status", "steroid", "location"]})
 CASE_004 = {
     "id": "case-004",
     "label": "Case 004 — 67yo M, glioblastoma IDH-wt · prior bevacizumab (TCGA-06-5413)",
