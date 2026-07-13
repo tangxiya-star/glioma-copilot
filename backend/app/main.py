@@ -832,26 +832,62 @@ _AUDIT_COMPARE_SYSTEM = (
 )
 
 
+def _norm_verdict(v: str) -> str:
+    """Canonicalize a verdict string to met | not_met | unknown (best-effort).
+    Checks not_met BEFORE met, since 'not_met' contains 'met'."""
+    s = (v or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if "not_met" in s or "notmet" in s or "ineligible" in s:
+        return "not_met"
+    if "unknown" in s or "insufficient" in s or "undocumented" in s:
+        return "unknown"
+    if "met" in s or "eligible" in s:
+        return "met"
+    return s
+
+
 def _audit_scores(comparisons: list[dict]) -> dict:
-    """Agreement rate + counts over the audit comparisons."""
-    total = agree = disagree = missing = 0
+    """Score the audit on CLINICAL CONCORDANCE, not the auditor's first blind guess,
+    and tag each comparison with a `category` the UI groups by.
+
+    Key insight: a blind 'disagree' where the auditor's own correct_verdict lands back
+    on the SYSTEM's verdict is the auditor self-correcting (it over-called) — NOT the
+    system being wrong. Counting those against the system understates it. So:
+      - agree ............... system upheld (blind pass already matched)
+      - self_corrected ...... auditor disagreed blind, then conceded the system is right
+      - challenged .......... auditor maintains the system's verdict is clinically wrong
+      - system_missing ...... a criterion the system did not assess at all
+    Concordance = upheld / (upheld + challenged), where upheld = agree + self_corrected.
+    """
+    upheld = self_corrected = challenged = missing = 0
     for c in comparisons:
         st = c.get("status")
-        if st == "agree":
-            agree += 1
-            total += 1
-        elif st == "disagree":
-            disagree += 1
-            total += 1
-        elif st == "system_missing":
+        if st == "system_missing":
             missing += 1
-    rate = round(agree / total, 3) if total else None
+            c["category"] = "system_missing"
+            continue
+        if st == "agree":
+            upheld += 1
+            c["category"] = "agree"
+            continue
+        # disagree: did the auditor ultimately concede the system's verdict?
+        sysv = _norm_verdict(c.get("system_verdict"))
+        corr = _norm_verdict(c.get("correct_verdict"))
+        if corr and corr == sysv:
+            upheld += 1
+            self_corrected += 1
+            c["category"] = "self_corrected"
+        else:
+            challenged += 1
+            c["category"] = "challenged"
+    evaluated = upheld + challenged
+    rate = round(upheld / evaluated, 3) if evaluated else None
     return {
-        "agreement_rate": rate,
-        "agree": agree,
-        "disagree": disagree,
+        "concordance_rate": rate,
+        "upheld": upheld,
+        "self_corrected": self_corrected,
+        "challenged": challenged,
         "system_missing": missing,
-        "compared": total,
+        "evaluated": evaluated,
     }
 
 

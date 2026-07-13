@@ -74,6 +74,28 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 >
 > **Everything below shipped today is committed + pushed to `main` (auto-deploys Vercel+Render).**
 >
+> **Shipped Jul 12 (LATER — 2nd session, frontend surfacing + audit reframe):**
+> - **Surfaced 3 backend capabilities the UI was dropping** (`frontend/src/app/page.tsx`):
+>   ① the independent audit (`/api/audit/stream`) now has a UI (button + panel, clinician view,
+>   next to 3-agent review); ② patient FAQ (`explain.common_questions`) — backend generated it,
+>   frontend silently dropped it — now rendered in the "Explain for patient" card; ③ a printable
+>   **patient handout** in the shared view (`.handout` + `@media print` in `globals.css`,
+>   "Print / export handout" button) that folds in the shared-decision summary + the clinician's
+>   plain-language explanation + FAQ.
+> - **PATIENT-ACCESS MODEL made explicit** (memory `glioma-patient-access-model`): clinician
+>   cockpit, **no patient login**; explain/FAQ = clinician-issued material (doctor PREVIEWS the
+>   plain-language card in the clinician view, then decides to issue the handout); the printed
+>   handout is the only thing that crosses to the patient; audit is clinician-only.
+> - **Audit metric reframed — was actively CONFUSING** (`_audit_scores` in `main.py` +
+>   `audit_calibration.py` + panel). Old "% agreement" scored the auditor's blind FIRST guess vs
+>   the system, so when the auditor over-called an exclusion as 'met' then conceded 'unknown' was
+>   right, it counted AGAINST us — a 57%-agreement/"12 disagree" panel that read as "system is
+>   half wrong" when the truth was the opposite. Now each comparison is tagged `category`:
+>   `agree` / `self_corrected` (auditor over-called → conceded → **system upheld**) / `challenged`
+>   (auditor maintains system wrong = the only real red flag) / `system_missing`. Headline is
+>   `concordance_rate = upheld/(upheld+challenged)` where `upheld = agree + self_corrected`.
+>   Verified live: case-004 now reads **~88% concordant · 23/26 upheld · N genuine challenges**.
+>
 > **Shipped Jul 12 (in order):**
 > - **Independent clinician-audit agent** — `POST /api/audit/stream` (`backend/app/main.py`,
 >   model `audit`→Opus in `config.py`). BLIND re-derivation of eligibility from the raw

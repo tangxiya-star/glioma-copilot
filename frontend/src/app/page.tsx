@@ -99,6 +99,12 @@ function IconSearch({ className = "h-4 w-4" }: IconProps) {
 function IconChat({ className = "h-4 w-4" }: IconProps) {
   return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><path d="M21 12a8 8 0 01-8 8 8.6 8.6 0 01-3.6-.8L3 20l1.2-4.3A8 8 0 1121 12z" /></svg>);
 }
+function IconShield({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 9.5C8 22.3 5 18.4 5 14V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg>);
+}
+function IconPrint({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><path d="M6 9V3h12v6" /><path d="M6 18H4a2 2 0 01-2-2v-4a2 2 0 012-2h16a2 2 0 012 2v4a2 2 0 01-2 2h-2" /><path d="M6 14h12v7H6z" /></svg>);
+}
 
 const VERDICT: Record<string, { Ico: IconCmp; label: string; cls: string }> = {
   met: { Ico: IconCheck, label: "met", cls: "text-emerald-600" },
@@ -153,6 +159,7 @@ type Explanation = {
   why_it_may_fit?: string;
   open_questions?: string[];
   what_it_involves?: string;
+  common_questions?: { q: string; plain_answer: string }[];
   questions_to_ask?: string[];
 };
 type ExplainResp = { trial: { nct_id: string; title: string; url: string }; explanation: Explanation };
@@ -214,6 +221,34 @@ type Review = {
   done?: boolean;
 };
 
+// Independent clinician-audit agent: blind re-derivation, then adversarial compare
+// against our fit table. Challenges the verdicts (verify only trusts them).
+type AuditComparison = {
+  criterion: string;
+  your_verdict: "met" | "not_met" | "unknown";
+  system_verdict: "met" | "not_met" | "unknown" | "absent";
+  status: "agree" | "disagree" | "system_missing";
+  category?: "agree" | "self_corrected" | "challenged" | "system_missing";
+  correct_verdict?: string;
+  reason?: string;
+};
+type AuditScores = {
+  concordance_rate: number | null;
+  upheld: number;
+  self_corrected: number;
+  challenged: number;
+  system_missing: number;
+  evaluated: number;
+};
+type Audit = {
+  stage?: string;
+  comparisons?: AuditComparison[];
+  scores?: AuditScores;
+  verdict?: string;
+  disclaimer?: string;
+  done?: boolean;
+};
+
 const VSTATUS: Record<string, { Ico: IconCmp; cls: string; label: string }> = {
   supported: { Ico: IconCheck, cls: "text-emerald-600", label: "supported" },
   overstated: { Ico: IconWarn, cls: "text-amber-600", label: "overstated" },
@@ -251,6 +286,10 @@ export default function Home() {
 
   const [review, setReview] = useState<Review | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Independent clinician-audit agent (challenges the fit table).
+  const [audit, setAudit] = useState<Audit | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   // Day 5: plain-language explanation + preferences + shared-decision summary.
   const [explain, setExplain] = useState<ExplainResp | null>(null);
@@ -290,6 +329,7 @@ export default function Home() {
     setFit(null);
     setFitNct("");
     setReview(null);
+    setAudit(null);
     setTriage({});
     setPool(null);
     setExplain(null);
@@ -468,6 +508,7 @@ export default function Home() {
     setFitLoading(true);
     setFit(null);
     setReview(null);
+    setAudit(null);
     setExplain(null);
     try {
       const r = await fetch(`${API_URL}/api/fit/stream`, {
@@ -553,6 +594,53 @@ export default function Home() {
       }
     } finally {
       setReviewLoading(false);
+    }
+  }
+
+  // Independent clinician audit: re-derive eligibility blind, then challenge our fit table.
+  async function runAudit() {
+    if (!fit) return;
+    setAuditLoading(true);
+    setAudit({ stage: "starting" });
+    try {
+      const r = await fetch(`${API_URL}/api/audit/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nct_id: fit.trial.nct_id, patient_id: caseId }),
+      });
+      if (!r.body) return;
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let msg;
+          try {
+            msg = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          if (msg.type === "stage") setAudit((p) => ({ ...p!, stage: msg.stage }));
+          else if (msg.type === "audit")
+            setAudit((p) => ({
+              ...p!,
+              comparisons: msg.comparisons,
+              scores: msg.scores,
+              verdict: msg.verdict,
+              disclaimer: msg.disclaimer,
+            }));
+          else if (msg.type === "done") setAudit((p) => ({ ...p!, done: true }));
+        }
+      }
+    } finally {
+      setAuditLoading(false);
     }
   }
 
@@ -1225,6 +1313,13 @@ export default function Home() {
                   {reviewLoading ? "Running 3-agent review…" : "Run 3-agent verification"}
                 </button>
                 <button
+                  onClick={runAudit}
+                  disabled={auditLoading}
+                  className="text-sm rounded-md border border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50 px-3 py-1.5"
+                >
+                  {auditLoading ? "Auditing…" : (<span className="inline-flex items-center gap-1.5"><IconShield className="h-4 w-4" /> Run independent audit</span>)}
+                </button>
+                <button
                   onClick={runExplain}
                   disabled={explainLoading}
                   className="text-sm rounded-md border border-sky-400 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30 disabled:opacity-50 px-3 py-1.5"
@@ -1277,6 +1372,19 @@ export default function Home() {
                           <li key={i}>{q}</li>
                         ))}
                       </ul>
+                    </div>
+                  ) : null}
+                  {explain.explanation.common_questions?.length ? (
+                    <div className="border-t border-sky-200 dark:border-sky-900 pt-2">
+                      <p className="font-medium">Common questions patients ask:</p>
+                      <dl className="mt-1 space-y-1.5">
+                        {explain.explanation.common_questions.map((cq, i) => (
+                          <div key={i}>
+                            <dt className="text-neutral-700 dark:text-neutral-200">{cq.q}</dt>
+                            <dd className="ml-3 text-neutral-500 dark:text-neutral-400">{cq.plain_answer}</dd>
+                          </div>
+                        ))}
+                      </dl>
                     </div>
                   ) : null}
                 </div>
@@ -1371,6 +1479,168 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {/* Independent clinician-audit agent — adversarial cross-check that
+                  CHALLENGES the fit table (verify only trusts it). Clinician-only. */}
+              {audit && (
+                <div
+                  className={`space-y-3 rounded-xl border p-4 ${
+                    audit.scores
+                      ? audit.scores.challenged === 0
+                        ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20"
+                        : "border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"
+                      : "border-neutral-200 dark:border-neutral-800"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-wide text-neutral-500 inline-flex items-center gap-1.5">
+                      <IconShield className="h-3.5 w-3.5" /> Independent audit · blind re-derivation
+                    </p>
+                    {audit.scores && audit.scores.concordance_rate != null && (
+                      <span
+                        className={`text-sm font-semibold ${
+                          audit.scores.challenged === 0
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : "text-amber-700 dark:text-amber-300"
+                        }`}
+                      >
+                        {Math.round(audit.scores.concordance_rate * 100)}% clinically concordant
+                      </span>
+                    )}
+                  </div>
+
+                  {!audit.scores ? (
+                    <p className="text-sm text-neutral-400 animate-pulse">
+                      {audit.stage === "compare"
+                        ? "comparing to our fit table…"
+                        : audit.stage === "independent"
+                        ? "re-deriving eligibility blind…"
+                        : "starting…"}
+                    </p>
+                  ) : (
+                    <>
+                      {/* Plain-English framing so the number can't be misread as
+                          "the system is only X% right". */}
+                      <p className="text-sm text-neutral-700 dark:text-neutral-200">
+                        A second AI re-derived eligibility <b>blind</b> and upheld the system on{" "}
+                        <b>{audit.scores.upheld}</b> of <b>{audit.scores.evaluated}</b> criteria
+                        {audit.scores.self_corrected > 0 ? (
+                          <>
+                            {" "}— including <b>{audit.scores.self_corrected}</b> exclusion
+                            {audit.scores.self_corrected > 1 ? "s" : ""} it first over-called, then
+                            conceded the system&apos;s conservative call was clinically correct
+                          </>
+                        ) : null}
+                        .
+                      </p>
+
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        <span className="inline-flex items-center gap-1 text-emerald-600">
+                          <IconCheck className="h-3.5 w-3.5" /> {audit.scores.upheld} upheld
+                        </span>
+                        {audit.scores.challenged > 0 && (
+                          <span className="inline-flex items-center gap-1 text-red-600">
+                            <IconX className="h-3.5 w-3.5" /> {audit.scores.challenged} genuine challenge
+                            {audit.scores.challenged > 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {audit.scores.system_missing > 0 && (
+                          <span className="inline-flex items-center gap-1 text-amber-600">
+                            <IconWarn className="h-3.5 w-3.5" /> {audit.scores.system_missing} not assessed
+                          </span>
+                        )}
+                      </div>
+
+                      {audit.verdict && (
+                        <p className="text-sm text-neutral-500 italic">{audit.verdict}</p>
+                      )}
+
+                      {/* Genuine challenges — the only rows where the system may be wrong. */}
+                      {audit.comparisons?.some((c) => c.category === "challenged") && (
+                        <div>
+                          <p className="text-xs font-medium text-red-700 dark:text-red-300 mb-1">
+                            Genuine challenges — review these
+                          </p>
+                          <ul className="space-y-2">
+                            {audit.comparisons
+                              .filter((c) => c.category === "challenged")
+                              .map((c, i) => (
+                                <li
+                                  key={i}
+                                  className="text-sm rounded-md bg-white/60 dark:bg-black/20 border border-red-200 dark:border-red-900 px-3 py-2"
+                                >
+                                  <span className="text-neutral-700 dark:text-neutral-200">{c.criterion}</span>
+                                  <div className="mt-1 text-xs text-neutral-500">
+                                    <span className="block">
+                                      auditor: <b>{c.your_verdict}</b> · system: <b>{c.system_verdict}</b>
+                                      {c.correct_verdict ? <> · likely correct: <b>{c.correct_verdict}</b></> : null}
+                                    </span>
+                                    {c.reason && <span className="block mt-0.5">{c.reason}</span>}
+                                  </div>
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Auditor over-called, system upheld — the honesty rule working; muted so
+                          it reads as a win, not a problem. */}
+                      {audit.comparisons?.some((c) => c.category === "self_corrected") && (
+                        <details className="text-sm">
+                          <summary className="cursor-pointer text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            Auditor over-called, system upheld (
+                            {audit.comparisons.filter((c) => c.category === "self_corrected").length}) — the
+                            honesty check working
+                          </summary>
+                          <ul className="mt-1.5 space-y-1.5">
+                            {audit.comparisons
+                              .filter((c) => c.category === "self_corrected")
+                              .map((c, i) => (
+                                <li
+                                  key={i}
+                                  className="text-xs text-neutral-500 rounded-md bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900 px-3 py-1.5"
+                                >
+                                  <span className="text-neutral-700 dark:text-neutral-200">{c.criterion}</span>
+                                  {" — "}auditor first said <b>{c.your_verdict}</b>, system kept{" "}
+                                  <b>{c.system_verdict}</b> (correct)
+                                </li>
+                              ))}
+                          </ul>
+                        </details>
+                      )}
+
+                      {/* Criteria the system did not assess at all. */}
+                      {audit.comparisons?.some((c) => c.category === "system_missing") && (
+                        <details className="text-sm">
+                          <summary className="cursor-pointer text-xs font-medium text-amber-700 dark:text-amber-300">
+                            Not assessed by the system (
+                            {audit.comparisons.filter((c) => c.category === "system_missing").length})
+                          </summary>
+                          <ul className="mt-1.5 space-y-1.5">
+                            {audit.comparisons
+                              .filter((c) => c.category === "system_missing")
+                              .map((c, i) => (
+                                <li
+                                  key={i}
+                                  className="text-xs text-neutral-500 rounded-md bg-white/60 dark:bg-black/20 border border-amber-200 dark:border-amber-900 px-3 py-1.5"
+                                >
+                                  <span className="text-neutral-700 dark:text-neutral-200">{c.criterion}</span>
+                                  {c.reason && <span className="block mt-0.5">{c.reason}</span>}
+                                </li>
+                              ))}
+                          </ul>
+                        </details>
+                      )}
+
+                      {audit.disclaimer && (
+                        <p className="text-[11px] text-neutral-400 border-t border-neutral-200 dark:border-neutral-800 pt-2">
+                          {audit.disclaimer}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -1462,7 +1732,22 @@ export default function Home() {
           </div>
 
           {summary && (
-            <div className="space-y-4">
+            <div className="handout space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold">Shared-decision summary</h3>
+                  <p className="text-xs text-neutral-500">
+                    {c?.diagnosis ? `${c.diagnosis} · ` : ""}Prepared with your care team · for
+                    discussion, not a recommendation · not medical advice
+                  </p>
+                </div>
+                <button
+                  onClick={() => window.print()}
+                  className="no-print shrink-0 text-sm rounded-md border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 px-3 py-1.5 inline-flex items-center gap-1.5"
+                >
+                  <IconPrint className="h-4 w-4" /> Print / export handout
+                </button>
+              </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
                   Preference-weighted ordering (each adjustment shown)
@@ -1522,6 +1807,45 @@ export default function Home() {
                         <li key={i}>{d}</li>
                       ))}
                     </ul>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Plain-language explanation the clinician previewed & chose to include
+                  in the take-home handout (carried from the clinician view). */}
+              {explain?.explanation && (
+                <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/50 dark:bg-sky-950/20 p-4 space-y-2 text-sm">
+                  <p className="text-xs uppercase tracking-wide text-sky-500">
+                    In plain language · {explain.trial.title}
+                  </p>
+                  {explain.explanation.what_it_is && (
+                    <p><span className="font-medium">What it is: </span>{explain.explanation.what_it_is}</p>
+                  )}
+                  {explain.explanation.why_it_may_fit && (
+                    <p><span className="font-medium">Why it may fit: </span>{explain.explanation.why_it_may_fit}</p>
+                  )}
+                  {explain.explanation.questions_to_ask?.length ? (
+                    <div>
+                      <p className="font-medium">Questions to ask your doctor:</p>
+                      <ul className="list-disc ml-5 text-neutral-600 dark:text-neutral-300">
+                        {explain.explanation.questions_to_ask.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {explain.explanation.common_questions?.length ? (
+                    <div className="border-t border-sky-200 dark:border-sky-900 pt-2">
+                      <p className="font-medium">Common questions patients ask:</p>
+                      <dl className="mt-1 space-y-1.5">
+                        {explain.explanation.common_questions.map((cq, i) => (
+                          <div key={i}>
+                            <dt className="text-neutral-700 dark:text-neutral-200">{cq.q}</dt>
+                            <dd className="ml-3 text-neutral-500 dark:text-neutral-400">{cq.plain_answer}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
                   ) : null}
                 </div>
               )}

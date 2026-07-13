@@ -83,7 +83,7 @@ def run_one(case_id: str, nct_id: str, expect: str, key_terms: list, hint: str) 
         "expect_on_key": expect,
         "auditor_key_verdict": key_verdict,
         "CALIBRATED": calibrated,
-        "agreement_rate": scores["agreement_rate"],
+        "concordance_rate": scores["concordance_rate"],
         "scores": scores,
         "overall": compare.get("verdict", ""),
         "disagreements": disagreements,

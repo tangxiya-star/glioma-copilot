@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Patient handout export: print only the .handout block (the clinician-issued
+   take-home). The patient never logs in — this printout is how it reaches them. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .handout,
+  .handout * {
+    visibility: visible;
+  }
+  .handout {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 8mm;
+    color: #000;
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
