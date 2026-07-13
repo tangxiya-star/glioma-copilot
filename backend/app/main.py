@@ -124,14 +124,14 @@ def patient(id: str | None = None):
 
 
 def condition_for_diagnosis(diagnosis: str | None) -> str:
-    """Map a WHO CNS5 diagnosis to a ClinicalTrials.gov condition query (candidate scoping)."""
-    d = (diagnosis or "").lower()
-    if "glioblastoma" in d:
-        return "glioblastoma"
-    if "oligodendroglioma" in d:
-        return "oligodendroglioma"
-    if "astrocytoma" in d:
-        return "astrocytoma"
+    """ClinicalTrials.gov condition scope for candidate pull.
+
+    Per the whole-glioma product scope (not just the subtype), we search the BROAD
+    'glioma' pool — so a relevant trial listed under 'glioma' / 'brain tumor' rather
+    than the exact subtype is never silently missed (recall-first). Subtype conflicts
+    are then handled downstream by the deterministic pre-screen + per-criterion fit.
+    The `diagnosis` arg is kept for API compatibility but no longer narrows the search.
+    """
     return "glioma"
 
 
