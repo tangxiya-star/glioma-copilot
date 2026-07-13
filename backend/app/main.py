@@ -10,6 +10,7 @@ Claude is not the source of truth; it only reasons over retrieved records.
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from anthropic import Anthropic
 from fastapi import FastAPI, HTTPException
@@ -537,26 +538,38 @@ def triage_stream(req: TriageRequest):
         except Exception as e:
             print(f"[triage] patient store skipped: {e}")
 
-        # Stage 2: deep per-criterion fit on the top N screen-CLEAR trials.
+        # Stage 2: deep per-criterion fit on the top N screen-CLEAR trials. Run the
+        # (up to n) Claude fit calls CONCURRENTLY and stream each as it lands, so the
+        # wall-clock is ~one fit instead of the sum. DB writes stay on this generator
+        # thread (only the Claude call is parallelized). Streamed in completion order;
+        # the client sorts by fit anyway.
         deep = [t for t in clear if t.get("eligibility")][:n]
-        for t in deep:
-            meta = {"nct_id": t["nct_id"], "title": t["title"],
-                    "url": t["url"], "locations": t["locations"],
-                    "phases": t.get("phases", []), "states": t.get("states", [])}
-            try:
-                items = _compute_fit_items(patient, t)
-            except Exception as e:
-                yield json.dumps({"type": "triage", "trial": meta, "error": str(e)}) + "\n"
-                continue
-            summary = _summarize_items(items)
-            try:
-                upsert_trials([t])
-                store_eligibility_results(patient["id"], t["nct_id"], items)
-            except Exception as e:
-                print(f"[triage] fit store skipped: {e}")
-            yield json.dumps({"type": "triage", "trial": meta, "items": items,
-                              "summary": summary,
-                              "signal": _triage_signal(summary)}) + "\n"
+        meta_by_nct = {
+            t["nct_id"]: {"nct_id": t["nct_id"], "title": t["title"],
+                          "url": t["url"], "locations": t["locations"],
+                          "phases": t.get("phases", []), "states": t.get("states", [])}
+            for t in deep
+        }
+        if deep:
+            with ThreadPoolExecutor(max_workers=len(deep)) as ex:
+                futures = {ex.submit(_compute_fit_items, patient, t): t for t in deep}
+                for fut in as_completed(futures):
+                    t = futures[fut]
+                    meta = meta_by_nct[t["nct_id"]]
+                    try:
+                        items = fut.result()
+                    except Exception as e:
+                        yield json.dumps({"type": "triage", "trial": meta, "error": str(e)}) + "\n"
+                        continue
+                    summary = _summarize_items(items)
+                    try:
+                        upsert_trials([t])
+                        store_eligibility_results(patient["id"], t["nct_id"], items)
+                    except Exception as e:
+                        print(f"[triage] fit store skipped: {e}")
+                    yield json.dumps({"type": "triage", "trial": meta, "items": items,
+                                      "summary": summary,
+                                      "signal": _triage_signal(summary)}) + "\n"
 
         yield json.dumps({"type": "done", "deep_assessed": len(deep),
                           "total": len(pool)}) + "\n"
