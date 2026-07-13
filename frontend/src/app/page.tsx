@@ -291,6 +291,11 @@ export default function Home() {
   const [audit, setAudit] = useState<Audit | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
 
+  // Surfaces: verification+audit live in a right-side drawer (compare vs the fit
+  // table); the patient explanation opens as its own modal — neither stacks inline.
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
+
   // Day 5: plain-language explanation + preferences + shared-decision summary.
   const [explain, setExplain] = useState<ExplainResp | null>(null);
   const [explainLoading, setExplainLoading] = useState(false);
@@ -330,6 +335,8 @@ export default function Home() {
     setFitNct("");
     setReview(null);
     setAudit(null);
+    setPanelOpen(false);
+    setExplainOpen(false);
     setTriage({});
     setPool(null);
     setExplain(null);
@@ -509,6 +516,8 @@ export default function Home() {
     setFit(null);
     setReview(null);
     setAudit(null);
+    setPanelOpen(false);
+    setExplainOpen(false);
     setExplain(null);
     try {
       const r = await fetch(`${API_URL}/api/fit/stream`, {
@@ -557,6 +566,7 @@ export default function Home() {
 
   async function runReview() {
     if (!fit) return;
+    setPanelOpen(true);
     setReviewLoading(true);
     setReview({ stage: "starting" });
     try {
@@ -600,6 +610,7 @@ export default function Home() {
   // Independent clinician audit: re-derive eligibility blind, then challenge our fit table.
   async function runAudit() {
     if (!fit) return;
+    setPanelOpen(true);
     setAuditLoading(true);
     setAudit({ stage: "starting" });
     try {
@@ -656,6 +667,7 @@ export default function Home() {
         body: JSON.stringify({ nct_id: fit.trial.nct_id, patient_id: caseId }),
       });
       setExplain(await r.json());
+      setExplainOpen(true);
     } finally {
       setExplainLoading(false);
     }
@@ -784,7 +796,11 @@ export default function Home() {
         </aside>
 
         {/* ===== Main ===== */}
-        <main className="min-w-0 flex-1 p-6 space-y-6">
+        <main
+          className={`min-w-0 flex-1 p-6 space-y-6 transition-[padding] ${
+            panelOpen && view === "clinician" ? "xl:pr-[37rem]" : ""
+          }`}
+        >
           {/* Top bar — sticky so Analyze stays in reach while scrolling */}
           <div className={`${CARD} sticky top-4 z-20 flex flex-wrap items-center gap-3 px-5 py-3.5`}>
             <div className="min-w-0">
@@ -1328,13 +1344,29 @@ export default function Home() {
                 </button>
               </div>
 
-              {explain && explain.explanation && (
-                <div className="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-4 space-y-3 text-sm">
+              {explainOpen && explain?.explanation && (
+                <div
+                  className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/40 p-4 sm:p-8"
+                  onClick={() => setExplainOpen(false)}
+                >
+                <div
+                  className="relative my-auto w-full max-w-2xl rounded-xl border border-sky-300 dark:border-sky-800 bg-white dark:bg-neutral-900 p-5 space-y-3 text-sm shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center justify-between">
                     <p className="text-xs uppercase tracking-wide text-sky-500">
                       Plain-language explanation · for patient discussion
                     </p>
-                    <span className="text-[11px] text-neutral-400">not medical advice</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-neutral-400">not medical advice</span>
+                      <button
+                        onClick={() => setExplainOpen(false)}
+                        aria-label="Close"
+                        className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                      >
+                        <IconX className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   {explain.explanation.what_it_is && (
                     <p>
@@ -1388,7 +1420,29 @@ export default function Home() {
                     </div>
                   ) : null}
                 </div>
+                </div>
               )}
+
+              {panelOpen && (
+                <div className="fixed top-0 right-0 z-40 flex h-screen w-full max-w-xl flex-col overflow-auto border-l border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 shadow-2xl">
+                  <div className="mb-3 flex items-center justify-between border-b border-slate-100 dark:border-neutral-800 pb-2">
+                    <p className="text-sm font-semibold">
+                      Verification &amp; audit{" "}
+                      <span className="font-normal text-slate-400">· cross-checked against the fit table</span>
+                    </p>
+                    <button
+                      onClick={() => setPanelOpen(false)}
+                      className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    >
+                      <IconX className="h-4 w-4" /> Close
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                  {!review && !audit && (
+                    <p className="text-sm text-neutral-400">
+                      Run 3-agent verification or the independent audit — results appear here, beside the fit table.
+                    </p>
+                  )}
 
               {review && (
                 <div className="space-y-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
@@ -1639,6 +1693,9 @@ export default function Home() {
                       )}
                     </>
                   )}
+                </div>
+              )}
+                  </div>
                 </div>
               )}
             </div>
