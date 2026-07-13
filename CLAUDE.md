@@ -68,9 +68,78 @@ This repo is the **code repo** (build during the hackathon). The planning/thinki
 
 ---
 
-## Current status & next steps  (updated Jul 9 — Day 6 in progress)
+## Current status & next steps  (updated Jul 12 — Day 6, submission imminent)
 
-> **⇢ JUL 9 SESSION — read this first, then the Jul-8 block below for full context.**
+> **⇢ JUL 12 SESSION — read THIS block first (newest). Older Jul-9 / Jul-8 blocks follow.**
+>
+> **Everything below shipped today is committed + pushed to `main` (auto-deploys Vercel+Render).**
+>
+> **Shipped Jul 12 (in order):**
+> - **Independent clinician-audit agent** — `POST /api/audit/stream` (`backend/app/main.py`,
+>   model `audit`→Opus in `config.py`). BLIND re-derivation of eligibility from the raw
+>   criteria+report, THEN compares to our fit table → agree/disagree/system-missing +
+>   agreement rate. It CHALLENGES the fit table (verify only trusts it). NOT clinician
+>   validation; can't catch shared blind spots. Calibrated: `backend/scripts/audit_calibration.py`
+>   (auditor independently lands `not_met` on the Case-004 bevacizumab anchor).
+> - **Recurrence self-contradiction fix** — case-001/004 reports printed "Disease status:
+>   Newly diagnosed" under the REAL-GDC header while narrating "recurrent". Disease course
+>   moved into the labeled CONSTRUCTED layer ("first recurrence"); report builder skips any
+>   authored field from the REAL block.
+> - **+7/−10 molecular column** — real cBioPortal `CHR_7_GAIN_CHR_10_LOSS` surfaced as a
+>   panel column (present/absent) across curated + live-snapshot + live-loader cases; a
+>   GBM-defining feature (present only on IDH-wt GBMs). Classifier already had the rule.
+> - **Pregnancy gate** — report derives it from REAL sex (male → N/A; female → confirm).
+> - **fit = complete + honest** (big one): dropped the "~14 most-relevant" cap → cover ALL
+>   ~24 criteria incl. safety/logistics gates. Honest met/unknown split: 'met' ONLY when the
+>   chart gives a basis (tx record → no bevacizumab; male → pregnancy N/A); anything the
+>   chart lacks (a test VALUE **or** an unrecorded history item) → 'unknown'. Never assume an
+>   absence the chart never documented. Audit system-missing on Case-004 dropped 12→0.
+> - **Workup checklist UI** — the ~16 unknowns are grouped into "🧪 Tests to order" vs
+>   "📄 Records to obtain/confirm" (deterministic keyword split, `page.tsx`), framed "not
+>   disqualifiers". Turns unknowns from noise into an actionable list.
+> - **explain agent FAQ** — `_EXPLAIN_SYSTEM` now carries Tianwei's real patient-group FAQ
+>   (trial arms/randomization, PR/CR/OS/PFS, resection levels, what-if-recur, life-on-trial,
+>   trials-aren't-only-drugs incl. TTF, withdrawal) + a PROGNOSIS RED LINE (survival = doctor
+>   only) + a `common_questions` output field.
+> - **triage parallelized** — Stage-2 fits run concurrently (ThreadPoolExecutor); Analyze
+>   ~60-75s → ~26s.
+> - **UI polish** — all emoji replaced by an inline-SVG icon set; dev CORS now allows any
+>   localhost port (fixed local "0 patients" on :3001).
+>
+> **KEY POSITIONING (from brother Tianwei's Jul-11 domain review — see memory
+> `glioma-expert-review`):**
+> - **Lead the demo with the PATIENT side** (preferences / social-determinants-of-health +
+>   the plain-language explanation layer). A real neuro-onc expert rates these as potentially
+>   MORE valuable than the molecular matching, and as differentiators others lack.
+> - **Do NOT hero the bevacizumab drug-class catch to clinicians** — glioma has only one
+>   anti-VEGF (bevacizumab), so name→class is unimpressive to a specialist. Keep it as a small
+>   "grounding via RxNorm/ChEMBL = anti-hallucination" example for general judges only.
+> - **Demo thesis is honesty, not "finds a match":** empirically NO case yields a clean ✅
+>   looks-eligible (real TCGA vs real strict trials = ❓/❌ dominated). needs_workup (0 not_met)
+>   = the real potential match; the tool refuses to fake a green "eligible" over unknowns.
+>   Frame ❌ as "correctly caught barrier", ❓ as "potential match → workup checklist".
+> - **Fairness Q&A prep:** a judge may ask — narrow eligibility cherry-picks the healthiest
+>   patients. Answer with the inclusive / non-recommender / clinician-in-loop stance.
+> - Roadmap (post-hackathon): genome-wide DNA-methylation clustering (prognostic, not
+>   eligibility; resource-gated), resection granularity (biopsy/PR/GTR/supratotal-FLAIR),
+>   concomitant-meds capture (metformin/statin) for subgroup analysis.
+>
+> **Reviewer materials (on ~/Desktop, ready to send a clinician):** `glioma-reviewer-brief.pdf`
+> (1-page, for cold outreach), `glioma-reviewer-packet.pdf` (8-page detail), `glioma-cover-note.md`
+> (email body). Honesty rule: record any feedback as "a neuro-oncology clinician's input", with
+> consent — NEVER "physician-validated". English contact confirmed.
+>
+> **NEXT (submission, due Jul 13 9pm ET):** ① write the 100–200w submission summary (title:
+> **"Does this trial fit *this* patient?"**; lead with honest per-criterion fit + unknown→workup
+> + patient-side/SDOH + explanation; do NOT claim novelty on matching); ② finalize the 3-min
+> demo script (`docs/demo_script.md`) — hero Case-004 (❌ bevacizumab caught + ❓ workup list) +
+> audit self-check + patient side; ③ send the clinician the brief PDF + cover note; ④ record the
+> video; ⑤ `gh repo edit tangxiya-star/glioma-copilot --visibility public` (STILL PRIVATE);
+> ⑥ submit. Deploy: Render free tier cold-starts ~30-50s — warm `/health` before any demo.
+> To run locally: backend `cd backend && ../.venv/bin/uvicorn app.main:app --port 8000`;
+> frontend `cd frontend && npm run dev` (any localhost port now works via CORS).
+
+> **⇢ JUL 9 SESSION — read this next, then the Jul-8 block below for full context.**
 >
 > **Shipped today (committed + pushed to `main`):**
 > - **Cited evidence layer** — the *interpretation* layer on top of the scraped fact layer.
