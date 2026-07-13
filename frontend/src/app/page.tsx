@@ -68,6 +68,33 @@ const VERDICT = {
   unknown: { icon: "❓", label: "unknown", cls: "text-amber-600" },
 };
 
+// Split the "unknown" workup items into what needs a lab/test/imaging result vs
+// what needs a record pulled/confirmed — so the checklist reads as two clear
+// to-do lists, not one amber blob. Anything not clearly a measured result → record.
+const WORKUP_TEST_RE =
+  /neutrophil|platelet|h[ae]?moglobin|bilirubin|\bast\b|\balt\b|transaminase|gfr|creatinine|\bcount\b|coagulation|\binr\b|serolog|\bhiv\b|\bhbv\b|\bhcv\b|hepatitis|viral load|egfr|\bidh\b|mgmt|methylat|amplif|mutation|sequenc|\bmri\b|imaging|rano|measurable|lesion|\bscan\b|lvef|qtc|ejection|cardiac|\becg\b|\bekg\b|washout|weeks from|interval|marrow|organ function|ffpe|paraffin|tissue/i;
+function workupKind(it: FitItem): "test" | "record" {
+  return WORKUP_TEST_RE.test(`${it.criterion} ${it.citation ?? ""}`) ? "test" : "record";
+}
+function WorkupGroup({ title, items }: { title: string; items: FitItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <div className="text-xs font-semibold text-neutral-500 mb-1">
+        {title} <span className="text-neutral-400">({items.length})</span>
+      </div>
+      <ul className="space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="text-xs text-neutral-600 dark:text-neutral-300 flex gap-1.5">
+            <span className="text-amber-500 shrink-0">•</span>
+            <span>{it.criterion}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 type Summary = { met: number; not_met: number; unknown: number };
 type TriageSignal = "looks_eligible" | "needs_workup" | "conflict" | "no_criteria";
 type Triage = { items: FitItem[]; summary: Summary; signal: TriageSignal };
@@ -1123,6 +1150,25 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+
+              {(() => {
+                const unknowns = fit.items.filter((it) => it.verdict === "unknown");
+                if (unknowns.length === 0) return null;
+                const tests = unknowns.filter((it) => workupKind(it) === "test");
+                const records = unknowns.filter((it) => workupKind(it) === "record");
+                return (
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 p-4">
+                    <div className="text-sm font-medium">Workup checklist</div>
+                    <div className="text-xs text-neutral-500 mb-3">
+                      {unknowns.length} item{unknowns.length > 1 ? "s" : ""} the chart can&apos;t answer yet — confirm before this trial can be fully assessed. These are <span className="font-medium">not</span> disqualifiers.
+                    </div>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <WorkupGroup title="🧪 Tests to order" items={tests} />
+                      <WorkupGroup title="📄 Records to obtain / confirm" items={records} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Cited evidence layer (Claude Science → PubMed-verified): sources
                   next to the assessed trial + the patient's biomarkers. Traceability,
