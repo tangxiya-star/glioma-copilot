@@ -62,10 +62,48 @@ type FitResp = {
   summary: { met: number; not_met: number; unknown: number };
 };
 
-const VERDICT = {
-  met: { icon: "✅", label: "met", cls: "text-emerald-600" },
-  not_met: { icon: "❌", label: "not met", cls: "text-red-600" },
-  unknown: { icon: "❓", label: "unknown", cls: "text-amber-600" },
+// --- Inline SVG icon set (no emoji) — inherit color via currentColor, size via className ---
+type IconProps = { className?: string };
+type IconCmp = (p: IconProps) => React.ReactNode;
+function IconCheck({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>);
+}
+function IconX({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" /></svg>);
+}
+function IconQuestion({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>);
+}
+function IconWarn({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>);
+}
+function IconDot({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true"><circle cx="10" cy="10" r="3" /></svg>);
+}
+const OUT = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+function LogoMark({ className = "h-5 w-5" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} strokeWidth={2} className={className} aria-hidden="true"><path d="M3 12h4l2.5 6 5-14 2.5 8h4" /></svg>);
+}
+function IconClipboard({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4a1 1 0 011-1h4a1 1 0 011 1v1a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zM9 12h6M9 16h6" /></svg>);
+}
+function IconBeaker({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><path d="M9 3h6M10 3v6.2L5.6 17a2 2 0 001.8 3h9.2a2 2 0 001.8-3L14 9.2V3M7.5 14h9" /></svg>);
+}
+function IconDoc({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5zM14 3v5h5M9 13h6M9 17h4" /></svg>);
+}
+function IconSearch({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>);
+}
+function IconChat({ className = "h-4 w-4" }: IconProps) {
+  return (<svg viewBox="0 0 24 24" {...OUT} className={className} aria-hidden="true"><path d="M21 12a8 8 0 01-8 8 8.6 8.6 0 01-3.6-.8L3 20l1.2-4.3A8 8 0 1121 12z" /></svg>);
+}
+
+const VERDICT: Record<string, { Ico: IconCmp; label: string; cls: string }> = {
+  met: { Ico: IconCheck, label: "met", cls: "text-emerald-600" },
+  not_met: { Ico: IconX, label: "not met", cls: "text-red-600" },
+  unknown: { Ico: IconQuestion, label: "unknown", cls: "text-amber-600" },
 };
 
 // Split the "unknown" workup items into what needs a lab/test/imaging result vs
@@ -76,12 +114,12 @@ const WORKUP_TEST_RE =
 function workupKind(it: FitItem): "test" | "record" {
   return WORKUP_TEST_RE.test(`${it.criterion} ${it.citation ?? ""}`) ? "test" : "record";
 }
-function WorkupGroup({ title, items }: { title: string; items: FitItem[] }) {
+function WorkupGroup({ title, items, Ico }: { title: string; items: FitItem[]; Ico: IconCmp }) {
   if (items.length === 0) return null;
   return (
     <div>
-      <div className="text-xs font-semibold text-neutral-500 mb-1">
-        {title} <span className="text-neutral-400">({items.length})</span>
+      <div className="text-xs font-semibold text-neutral-500 mb-1 flex items-center gap-1.5">
+        <Ico className="h-3.5 w-3.5 shrink-0" /> {title} <span className="text-neutral-400">({items.length})</span>
       </div>
       <ul className="space-y-1">
         {items.map((it, i) => (
@@ -102,11 +140,11 @@ type Triage = { items: FitItem[]; summary: Summary; signal: TriageSignal };
 // Triage label for clinician review — NOT a recommendation. Ordering below is
 // conservative: hard conflicts sink, fewer unknowns rise; candidate set still
 // comes from condition scoping (this is fit triage, not discovery).
-const SIGNAL = {
-  looks_eligible: { icon: "✅", label: "looks eligible", cls: "text-emerald-600", rank: 0 },
-  needs_workup: { icon: "❓", label: "needs workup", cls: "text-amber-600", rank: 1 },
-  conflict: { icon: "❌", label: "conflict", cls: "text-red-600", rank: 2 },
-  no_criteria: { icon: "•", label: "no criteria", cls: "text-neutral-400", rank: 3 },
+const SIGNAL: Record<string, { Ico: IconCmp; label: string; cls: string; rank: number }> = {
+  looks_eligible: { Ico: IconCheck, label: "looks eligible", cls: "text-emerald-600", rank: 0 },
+  needs_workup: { Ico: IconQuestion, label: "needs workup", cls: "text-amber-600", rank: 1 },
+  conflict: { Ico: IconX, label: "conflict", cls: "text-red-600", rank: 2 },
+  no_criteria: { Ico: IconDot, label: "no criteria", cls: "text-neutral-400", rank: 3 },
 };
 
 // --- Day 5: shared-decision workspace ---
@@ -176,10 +214,10 @@ type Review = {
   done?: boolean;
 };
 
-const VSTATUS = {
-  supported: { icon: "✅", cls: "text-emerald-600", label: "supported" },
-  overstated: { icon: "⚠️", cls: "text-amber-600", label: "overstated" },
-  unsupported: { icon: "❌", cls: "text-red-600", label: "unsupported" },
+const VSTATUS: Record<string, { Ico: IconCmp; cls: string; label: string }> = {
+  supported: { Ico: IconCheck, cls: "text-emerald-600", label: "supported" },
+  overstated: { Ico: IconWarn, cls: "text-amber-600", label: "overstated" },
+  unsupported: { Ico: IconX, cls: "text-red-600", label: "unsupported" },
 };
 
 export default function Home() {
@@ -582,8 +620,8 @@ export default function Home() {
         {/* ===== Sidebar ===== */}
         <aside className="sticky top-0 h-screen w-64 shrink-0 flex flex-col gap-6 bg-white dark:bg-neutral-900 border-r border-slate-200/80 dark:border-neutral-800 p-5">
           <div className="flex items-center gap-2">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-lg">
-              🧠
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white">
+              <LogoMark className="h-5 w-5" />
             </div>
             <div className="leading-tight">
               <p className="font-bold">Glioma Copilot</p>
@@ -640,8 +678,8 @@ export default function Home() {
                   : "hover:bg-slate-50 dark:hover:bg-neutral-800/50"
               }`}
             >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-neutral-800 text-sm">
-                📋
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400">
+                <IconClipboard className="h-4 w-4" />
               </span>
               <span className="text-sm font-medium">Patient panel</span>
             </button>
@@ -688,7 +726,7 @@ export default function Home() {
                 disabled={loading || !report}
                 className={`${PRIMARY} ml-auto px-5 py-2 text-sm`}
               >
-                {loading ? "Analyzing…" : "⚡ Analyze"}
+                {loading ? "Analyzing…" : "Analyze"}
               </button>
             )}
           </div>
@@ -900,8 +938,9 @@ export default function Home() {
                 ))}
               </ol>
               {c.reclassification_note && (
-                <p className="text-xs bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 rounded-md p-2">
-                  ⚠ {c.reclassification_note}
+                <p className="flex items-start gap-1.5 text-xs bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 rounded-md p-2">
+                  <IconWarn className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>{c.reclassification_note}</span>
                 </p>
               )}
             </div>
@@ -1007,10 +1046,11 @@ export default function Home() {
 
               {mech.count > 0 && (
                 <div className="rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/20 p-3 text-xs space-y-1">
-                  <p className="font-medium text-teal-700 dark:text-teal-300">
-                    🔬 ChEMBL mechanism-matched {mech.count} trial{mech.count > 1 ? "s" : ""} that
+                  <p className="font-medium text-teal-700 dark:text-teal-300 flex items-start gap-1.5">
+                    <IconSearch className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>ChEMBL mechanism-matched {mech.count} trial{mech.count > 1 ? "s" : ""} that{" "}
                     exclude a drug <em>class</em> without naming the drug — a name-only filter would
-                    miss {mech.count > 1 ? "these" : "this"}.
+                    miss {mech.count > 1 ? "these" : "this"}.</span>
                   </p>
                   <ul className="space-y-0.5 text-teal-700/80 dark:text-teal-400/80">
                     {mech.examples.map((e) => (
@@ -1043,30 +1083,30 @@ export default function Home() {
                           <span className="text-sm font-medium">{t.title}</span>
                           {sig ? (
                             <span
-                              className={`shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap ${sig.cls}`}
+                              className={`inline-flex items-center gap-1 shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap ${sig.cls}`}
                             >
-                              {sig.icon} {sig.label}
+                              <sig.Ico className="h-3 w-3" /> {sig.label}
                             </span>
                           ) : (
                             flagged && (
-                              <span className="shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap text-amber-600">
-                                ⚠ screened out
+                              <span className="inline-flex items-center gap-1 shrink-0 rounded-full border border-current px-2 py-0.5 text-[11px] whitespace-nowrap text-amber-600">
+                                <IconWarn className="h-3 w-3" /> screened out
                               </span>
                             )
                           )}
                         </div>
                         {tri && tri.signal !== "no_criteria" && (
-                          <span className="block text-xs mt-1 space-x-2">
-                            <span className="text-emerald-600">✅ {tri.summary.met}</span>
-                            <span className="text-amber-600">❓ {tri.summary.unknown}</span>
-                            <span className="text-red-600">❌ {tri.summary.not_met}</span>
+                          <span className="flex gap-3 text-xs mt-1">
+                            <span className="inline-flex items-center gap-1 text-emerald-600"><IconCheck className="h-3.5 w-3.5" /> {tri.summary.met}</span>
+                            <span className="inline-flex items-center gap-1 text-amber-600"><IconQuestion className="h-3.5 w-3.5" /> {tri.summary.unknown}</span>
+                            <span className="inline-flex items-center gap-1 text-red-600"><IconX className="h-3.5 w-3.5" /> {tri.summary.not_met}</span>
                           </span>
                         )}
                         {flagged && t.screen?.reasons?.length ? (
                           <span className="block text-[11px] text-amber-600 mt-1">
                             {t.screen.reasons.map((rsn, i) => (
-                              <span key={i} className="block">
-                                ⚠ {rsn}
+                              <span key={i} className="flex items-start gap-1">
+                                <IconWarn className="h-3 w-3 mt-0.5 shrink-0" /> <span>{rsn}</span>
                               </span>
                             ))}
                           </span>
@@ -1116,9 +1156,9 @@ export default function Home() {
                 </a>
                 <span className="text-neutral-500">{fit.trial.title}</span>
                 <span className="ml-auto flex gap-2">
-                  <Chip cls="text-emerald-600">✅ {fit.summary.met} met</Chip>
-                  <Chip cls="text-amber-600">❓ {fit.summary.unknown} unknown</Chip>
-                  <Chip cls="text-red-600">❌ {fit.summary.not_met} not met</Chip>
+                  <Chip cls="text-emerald-600"><IconCheck className="h-3.5 w-3.5" /> {fit.summary.met} met</Chip>
+                  <Chip cls="text-amber-600"><IconQuestion className="h-3.5 w-3.5" /> {fit.summary.unknown} unknown</Chip>
+                  <Chip cls="text-red-600"><IconX className="h-3.5 w-3.5" /> {fit.summary.not_met} not met</Chip>
                 </span>
               </div>
               <div className="overflow-x-auto">
@@ -1136,7 +1176,7 @@ export default function Home() {
                       return (
                         <tr key={i} className="border-b border-neutral-100 dark:border-neutral-900 align-top">
                           <td className={`py-2 pr-3 whitespace-nowrap ${v.cls}`}>
-                            {v.icon} {v.label}
+                            <span className="inline-flex items-center gap-1"><v.Ico className="h-3.5 w-3.5" /> {v.label}</span>
                             <span className="block text-[11px] text-neutral-400">{it.kind}</span>
                           </td>
                           <td className="py-2 pr-3">{it.criterion}</td>
@@ -1163,8 +1203,8 @@ export default function Home() {
                       {unknowns.length} item{unknowns.length > 1 ? "s" : ""} the chart can&apos;t answer yet — confirm before this trial can be fully assessed. These are <span className="font-medium">not</span> disqualifiers.
                     </div>
                     <div className="grid gap-5 sm:grid-cols-2">
-                      <WorkupGroup title="🧪 Tests to order" items={tests} />
-                      <WorkupGroup title="📄 Records to obtain / confirm" items={records} />
+                      <WorkupGroup title="Tests to order" Ico={IconBeaker} items={tests} />
+                      <WorkupGroup title="Records to obtain / confirm" Ico={IconDoc} items={records} />
                     </div>
                   </div>
                 );
@@ -1189,7 +1229,7 @@ export default function Home() {
                   disabled={explainLoading}
                   className="text-sm rounded-md border border-sky-400 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30 disabled:opacity-50 px-3 py-1.5"
                 >
-                  {explainLoading ? "Explaining…" : "🗣 Explain for patient"}
+                  {explainLoading ? "Explaining…" : (<span className="inline-flex items-center gap-1.5"><IconChat className="h-4 w-4" /> Explain for patient</span>)}
                 </button>
               </div>
 
@@ -1285,8 +1325,8 @@ export default function Home() {
                                   : ""
                               }`}
                             >
-                              <span className={v.cls}>
-                                {v.icon} {v.label}
+                              <span className={`inline-flex items-center gap-1 ${v.cls}`}>
+                                <v.Ico className="h-3.5 w-3.5" /> {v.label}
                               </span>{" "}
                               <span className="text-neutral-600 dark:text-neutral-300">{e.claim}</span>
                               {flagged && (
@@ -1439,8 +1479,8 @@ export default function Home() {
                           <span className="text-sm font-medium">
                             {i + 1}. {r.title}
                           </span>
-                          <span className={`text-xs whitespace-nowrap ${sig.cls}`}>
-                            {sig.icon} {sig.label} · score {r.score}
+                          <span className={`inline-flex items-center gap-1 text-xs whitespace-nowrap ${sig.cls}`}>
+                            <sig.Ico className="h-3.5 w-3.5" /> {sig.label} · score {r.score}
                           </span>
                         </div>
                         <span className="block text-xs text-neutral-400 mt-0.5">
@@ -1630,7 +1670,7 @@ function TabButton({
 
 function Chip({ children, cls }: { children: React.ReactNode; cls: string }) {
   return (
-    <span className={`rounded-full border border-current px-2 py-0.5 text-xs ${cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full border border-current px-2 py-0.5 text-xs ${cls}`}>
       {children}
     </span>
   );
