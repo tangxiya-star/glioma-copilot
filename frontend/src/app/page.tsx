@@ -679,6 +679,7 @@ export default function Home() {
                     <th className="py-3 pr-4 font-medium">1p/19q</th>
                     <th className="py-3 pr-4 font-medium">MGMT</th>
                     <th className="py-3 pr-4 font-medium">ATRX</th>
+                    <th className="py-3 pr-4 font-medium whitespace-nowrap">+7/−10</th>
                     <th className="py-3 pr-4 font-medium">Grade</th>
                     <th className="py-3 pr-4 font-medium">KPS</th>
                     <th className="py-3 pr-4 font-medium">Site</th>
@@ -715,6 +716,7 @@ export default function Home() {
                         <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.IDH_CODEL_SUBTYPE ?? "—"}</td>
                         <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.MGMT_PROMOTER_STATUS ?? "—"}</td>
                         <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.ATRX_STATUS ?? "—"}</td>
+                        <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200 whitespace-nowrap">{m.CHR_7_10 ?? "—"}</td>
                         <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">{m.GRADE ?? "—"}</td>
                         <td className="py-3 pr-4 align-top text-sm text-slate-700 dark:text-slate-200">
                           {p.provenance?.clinical?.performance_kps ?? "—"}
