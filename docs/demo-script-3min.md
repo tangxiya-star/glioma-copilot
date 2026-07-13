@@ -3,7 +3,8 @@
 Hero case: **case-004** (TCGA-06-5413 · 67yo M · recurrent glioblastoma, IDH-wt · prior bevacizumab).
 Thesis: **honesty** — not "the AI found a match." Claude is never the source of truth.
 
-> 动作用中文，要讲的话用英文。目标 ~3:00（偏紧，超时先删【朋友经历】的细节或收尾）。
+> 动作用中文，要讲的话用英文。**完整版约 3:30**（加了 3-agent 逐个讲）。要压回 3:00，任选 ~30s 删掉：
+>   ① 哥哥那句「his wife…」可选行；② 独立审计段并回 3-agent 段一句带过；③ 开场【朋友经历】只留一句。
 > 录前先预热 Render `/health`，页面停在 Patient panel。
 > ⚠️ 两处要你自己确认：① 【朋友经历】占位符填成你的真实故事；② 是否公开哥哥的私人信息（需他同意）。
 
@@ -43,17 +44,22 @@ Thesis: **honesty** — not "the AI found a match." Claude is never the source o
 
 > "Now the core: a **per-criterion fit table** — what's met, and honestly, what's unknown. It never fakes a green 'eligible' — every unknown becomes a **workup checklist** of tests to order. This hand-check is exactly the manual step we're replacing."
 
-### 2:05–2:35 · 诚实层：验证 + 独立审计
-**【动作】** 点「Run independent audit」→ 右侧抽屉滑出；等出现「XX% clinically concordant」。指向顶部那句和红色「genuine challenges」/ 绿色 self-corrections。
+### 2:05–2:35 · 诚实层：3-agent 流水线（逐个指）
+**【动作】** 点「Run 3-agent verification」→ 右侧抽屉滑出，边流式出现边**依次指向**：`1 · Drafting agent` → `2 · Verification agent (Opus)` → `3 · Investigation agent`。
 
-> "Then the honesty layer. A three-agent loop drafts the assessment and an **Opus verifier rewrites any over-claim** back to the evidence. And separately — on the right — an **independent Opus auditor re-derives eligibility completely blind, then challenges our own table.** It even flags where our screen was too cautious. It's a check with teeth, not a rubber stamp."
+> "Then the honesty layer — **three agents, in order.** First, a **drafting** agent writes the eligibility brief. Second — the one I trust most — an **Opus verification** agent checks every claim against the fit table and **rewrites any over-claim** back to the evidence: 'eligible' becomes 'possibly relevant, pending a test.' Third, an **investigation** agent turns each remaining unknown into a concrete next step — the test to order, the record to pull."
 
-### 2:35–2:55 · 患者侧：解释 + FAQ + handout（最高价值）
+### 2:35–2:55 · 独立审计（第四个、独立的）
+**【动作】** 点「Run independent audit」→ 抽屉里出现审计面板；指向「XX% clinically concordant」和红色「genuine challenges」/ 绿色 self-corrections。
+
+> "And then, **separately**, an **independent** Opus auditor re-derives eligibility completely **blind** — it never sees our answers — and challenges the whole table. It even flags where our own screen was too cautious. That's a check with teeth, not a rubber stamp."
+
+### 2:55–3:20 · 患者侧：解释 + FAQ + handout（最高价值）
 **【动作】** 关抽屉；点「Explain for patient」→ 弹窗出现，滚一下平白解释 + 常见问题，关弹窗；点「Shared decision」→ 「Generate shared-decision summary」；指向「Print / export handout」。
 
 > "And the part my brother cared about most: the **conversation**. The doctor previews a plain-language explanation and a curated FAQ — no jargon, and a hard rule: **never a survival estimate.** Then a one-page **shared-decision handout** the patient takes home, where their own preferences re-rank the options."
 
-### 2:55–3:10 · 收尾
+### 3:20–3:35 · 收尾
 **【动作】** 停在 handout / 回镜头。
 
 > "Real data, verified per criterion, independently audited, explained honestly. **Nine Claude agents, each grounded in an external source of truth.** It doesn't recommend — it shows the doctor *why* a trial fits, or doesn't. Thank you."
