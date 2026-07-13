@@ -77,12 +77,19 @@ def _report(prov: dict, *, specimen: str, prior_therapy: str, overlay: str,
     # a contradicting "Newly diagnosed" line from GDC).
     def _real_line(key, label):
         return "" if key in _constructed else f"- {label}: {cl.get(key, '—')}\n"
+    # Pregnancy / breastfeeding is a real, near-universal trial gate. Sex is REAL (TCGA),
+    # so for male patients this resolves to a genuine N/A; for female cases we state what
+    # the chart documents (or that it must be confirmed) rather than guessing.
+    _sex = str(m.get("SEX", "")).lower()
+    _preg = ("not applicable (male patient)" if _sex.startswith("m")
+             else cl.get("pregnancy") or "not documented in chart — confirm before enrollment")
     clinical_real = (
         f"- Primary diagnosis: {cl.get('primary_diagnosis', '—')}\n"
         + _real_line("status", "Disease status")
         + _real_line("resection", "Resection")
         + f"- Tumor site: {cl.get('site', '—')}\n"
-        + f"- Performance status: KPS {cl.get('performance_kps', '—')}"
+        + f"- Performance status: KPS {cl.get('performance_kps', '—')}\n"
+        + f"- Pregnancy / breastfeeding: {_preg}"
     )
     return f"""INTEGRATED NEUROPATHOLOGY & MOLECULAR DIAGNOSTIC REPORT
 (demo chart — REAL molecular + REAL treatment data; a small labeled overlay is marked)
@@ -167,6 +174,8 @@ CASE_001 = {
             "    - 1p/19q (copy-number array): non-codeleted.\n"
             "    - MGMT promoter (methylation array): METHYLATED.\n"
             "    - ATRX: retained.\n"
+            "    - Chromosome 7/10 (copy-number array): GAIN of chromosome 7 and LOSS of\n"
+            "      chromosome 10 (+7/-10) — a glioblastoma-defining molecular feature.\n"
             "    - EGFR: NOT YET TESTED — amplification / EGFRvIII UNKNOWN (pending).\n"
             "      [OVERLAY — illustrative gate, not from TCGA]"
         ),
@@ -218,6 +227,7 @@ CASE_002 = {
             "    - ATRX (WES): truncating — W2001Cfs*14 (loss).\n"
             "    - TP53 (WES): mutated — R273H.\n"
             "    - TERT promoter: wild-type.\n"
+            "    - Chromosome 7/10 (copy-number array): no combined +7/-10.\n"
             "    - MGMT promoter (methylation array): METHYLATED."
         ),
         integrated_dx=(
@@ -268,6 +278,7 @@ CASE_003 = {
             "    - IDH1 (whole-exome sequencing): MUTANT — R132H.\n"
             "    - 1p/19q (copy-number array): CO-DELETED (whole-arm loss of 1p and 19q).\n"
             "    - TERT promoter: MUTATED.\n"
+            "    - Chromosome 7/10 (copy-number array): no combined +7/-10.\n"
             "    - ATRX (WES): retained.\n"
             "    - TP53 (WES): R273H.\n"
             "    - MGMT promoter (methylation array): METHYLATED."
@@ -324,7 +335,9 @@ CASE_004 = {
             "    - IDH1/2 (whole-exome sequencing): WILD-TYPE (no R132 mutation).\n"
             "    - 1p/19q (copy-number array): non-codeleted.\n"
             "    - MGMT promoter (methylation array): UNMETHYLATED.\n"
-            "    - ATRX: retained."
+            "    - ATRX: retained.\n"
+            "    - Chromosome 7/10 (copy-number array): GAIN of chromosome 7 and LOSS of\n"
+            "      chromosome 10 (+7/-10) — a glioblastoma-defining molecular feature."
         ),
         integrated_dx="Glioblastoma, IDH-wildtype, CNS WHO grade 4 — recurrent.",
     ),
