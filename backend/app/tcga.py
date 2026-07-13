@@ -133,7 +133,7 @@ def build_case_from_tcga(barcode: str) -> dict[str, Any]:
     # +7/−10 (gain chr7 / loss chr10) — a glioblastoma-defining CNV; real cBioPortal field.
     _chr710 = smpl.get("CHR_7_GAIN_CHR_10_LOSS", "")
     if _chr710:
-        markers["CHR_7_10"] = "+7/−10" if "gain" in _chr710.lower() else "no"
+        markers["CHR_7_10"] = "present" if "gain" in _chr710.lower() else "absent"
     markers["AGE"] = (pat.get("AGE") or "").split(".")[0] or "unknown"
     markers["SEX"] = pat.get("SEX") or "unknown"
     markers["HISTOLOGICAL_DIAGNOSIS"] = pat.get("HISTOLOGICAL_DIAGNOSIS") or smpl.get("CANCER_TYPE_DETAILED", "glioma")
